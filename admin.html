@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#080808">
 <title>Contender · Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="gymdb.js"></script>
+<script src="supabasedb.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#080808;color:#F0EDE8;font-family:"DM Sans",sans-serif;max-width:430px;margin:0 auto;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -143,6 +143,11 @@ textarea{resize:vertical;min-height:70px;}
 <body>
 
 <!-- ═══ LOGIN ════════════════════════════════════════════════ -->
+<div id="ov-loading" style="position:fixed;inset:0;background:#080808;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;gap:12px">
+  <div style="font-family:'Bebas Neue',cursive;font-size:40px;color:#C8F135;letter-spacing:3px">CONTENDER</div>
+  <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#555">Conectando con Supabase...</div>
+  <div id="ov-err" style="font-size:11px;color:#FF3B30;display:none;max-width:280px;text-align:center"></div>
+</div>
 <div class="screen-full active" id="screen-login">
   <div class="login-wrap">
     <div class="login-marca">CONTENDER<br>CLUB</div>
@@ -466,20 +471,13 @@ var PLAN_ABONOS = {
   Anual:      []
 };
 
-// ── Variables de trabajo — se cargan desde GymDB ─────────────
-GymDB.init(); // siembra datos si localStorage está vacío
+// ── Variables de trabajo (se llenan tras GymDB.init()) ────────
+var _gymdbReady = GymDB.init(); // Promise
 
-var SOCIOS      = GymDB.getSocios();
-var DEUDAS      = GymDB.getAllDeudas();
-var CHECKINS    = GymDB.getTodayCheckins();
-var MEMBRESIAS  = GymDB.getMembresias();
-var CLASES      = GymDB.getClases();
-var PRODUCTOS   = GymDB.getProductos();
-var MENSAJES_CAT= GymDB.getMensajes();
-var VENTAS      = GymDB.getVentas();
-var nextDeuId   = Date.now();
-var nextCatId   = {memb:Date.now()+1,clase:Date.now()+2,prod:Date.now()+3,msg:Date.now()+4};
-var HISTORICO   = GymDB.getHistorico();
+var SOCIOS=[], DEUDAS={}, CHECKINS=[], MEMBRESIAS=[], CLASES=[], PRODUCTOS=[], MENSAJES_CAT=[], VENTAS=[];
+var nextDeuId = Date.now();
+var nextCatId = {memb:Date.now()+1,clase:Date.now()+2,prod:Date.now()+3,msg:Date.now()+4};
+var HISTORICO = {ventas:[],checkins:[],socios:[]};
 
 // MSGS_WA: se construye desde MENSAJES_CAT para el modal de WA
 function buildMsgsWA(){
@@ -1131,6 +1129,11 @@ function renderGrafica(){
 
 // ── EVENTOS ───────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
+  _gymdbReady.then(function(){
+    // Datos listos — ocultar loading y arrancar
+    var ov=document.getElementById('ov-loading');
+    if(ov) ov.style.display='none';
+    recargarDatos();
 
   // PIN login
   document.querySelectorAll(".pin-key[data-n]").forEach(function(btn){
@@ -1204,13 +1207,19 @@ document.addEventListener("DOMContentLoaded",function(){
   var hoy=new Date().toISOString().slice(0,10);
   ge("r-desde").value=hoy; ge("r-hasta").value=hoy;
 
-  // ── Sincronización cross-tab (otro tab modificó datos) ─────
+  // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
-    // Sólo sincronizar si ya estamos logueados
     if(ge("screen-login").classList.contains("active")) return;
     recargarDatos();
     mostrarToast("↻ Sincronizado");
     renderPantallaActual();
+  });
+
+  }).catch(function(err){
+    var ov=document.getElementById('ov-loading');
+    var errEl=document.getElementById('ov-err');
+    if(errEl){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; }
+    console.error('[GymDB] Error al cargar:', err);
   });
 });
 

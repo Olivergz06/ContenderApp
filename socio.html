@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>GymPro · Socio</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="gymdb.js"></script>
+<script src="supabasedb.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 
@@ -571,6 +571,19 @@ document.querySelectorAll('.nav-item').forEach(function(btn){
 });
 
 document.addEventListener('DOMContentLoaded', function(){
+  // Esperar que Supabase cargue
+  _gymdbReady.then(function(){
+    var ov=document.getElementById('ov-loading');
+    if(ov) ov.style.display='none';
+    CLASES   = GymDB.getClases();
+    INSCRITOS= GymDB.getAllInscritos();
+  }).catch(function(e){
+    var ov=document.getElementById('ov-loading');
+    var errEl=document.getElementById('ov-err');
+    if(errEl){ errEl.style.display='block'; errEl.textContent='Error de conexión: '+e.message; }
+    console.error('[GymDB]',e);
+  });
+
   ge('nav-socio').style.display = 'none';
 
   // Login principal
@@ -603,8 +616,8 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- LÓGICA: INICIO -->
 <script>
 
-// ── DATOS DESDE GYMDB ────────────────────────────────────────
-GymDB.init();
+// ── DATOS DESDE GYMDB (cargados async en DOMContentLoaded) ──
+var _gymdbReady = GymDB.init(); // Promise
 
 var PERFILES = [];        // se llena al hacer login
 var DEUDAS_POR_SOCIO = {};// alias de GymDB.getAllDeudas()
@@ -958,7 +971,7 @@ document.addEventListener("DOMContentLoaded",function(){
   // Cerrar popup
   ge("popup-ok").addEventListener("click", function(){ ge("popup-pago").classList.remove("open"); });
 
-  // ── Sincronización cross-tab ───────────────────────────────
+  // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
     if(!SOCIO) return; // no logueado aún
     // Recargar datos frescos
@@ -993,9 +1006,9 @@ document.addEventListener("DOMContentLoaded",function(){
 // SOCIO_ID: se actualiza cuando el usuario selecciona perfil
 var SOCIO_ID = "001";
 
-// Clases e inscritos desde GymDB
-var CLASES   = GymDB.getClases();
-var INSCRITOS= GymDB.getAllInscritos();
+// Se llenan una vez que _gymdbReady resuelve
+var CLASES   = [];
+var INSCRITOS= {};
 
 
 function ge(id){ return document.getElementById(id); }
