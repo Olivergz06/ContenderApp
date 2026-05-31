@@ -351,6 +351,10 @@ textarea{resize:vertical;min-height:70px;}
       </select>
     </div>
     <div id="pago-resumen" style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);margin-top:4px;font-size:12px;color:var(--muted);line-height:1.8"></div>
+    <div style="margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Avisos en pantalla</div>
+      <div id="pago-avisos-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
     <div class="mbtns">
       <button class="btn bd" style="flex:1;padding:13px" data-close="modal-pago">Cancelar</button>
       <button class="btn bl" style="flex:1;padding:13px" id="pago-guardar">Confirmar</button>
@@ -384,6 +388,8 @@ textarea{resize:vertical;min-height:70px;}
 var _gymdbReady = GymDB.init(); // Promise
 
 var TRAINERS    = [];
+var AVISOS      = [];
+var TRAINER_ACTIVO = null;
 var PIN_ADMIN   = "1234";
 var PLAN_PRECIO = {Mensual:1200,Trimestral:3200,Semestral:5800,Anual:11000};
 var PLAN_DIAS   = {Mensual:30,Trimestral:90,Semestral:180,Anual:365};
@@ -394,7 +400,7 @@ var PLAN_ABONOS = {
   Anual:      []
 };
 
-var SOCIOS=[], DEUDAS={}, CHECKINS=[], MENSAJES=[];
+var SOCIOS=[], DEUDAS={}, CHECKINS=[], MENSAJES=[], PRODUCTOS=[];
 
 // Construir MSGS_WA desde MENSAJES
 function buildMsgsWA(){
@@ -405,12 +411,14 @@ function buildMsgsWA(){
 var MSGS_WA = buildMsgsWA();
 
 function recargarDatos(){
-  TRAINERS = GymDB.getTrainers();
-  SOCIOS   = GymDB.getSocios();
-  DEUDAS   = GymDB.getAllDeudas();
-  CHECKINS = GymDB.getTodayCheckins();
-  MENSAJES = GymDB.getMensajes();
-  MSGS_WA  = buildMsgsWA();
+  TRAINERS  = GymDB.getTrainers();
+  SOCIOS    = GymDB.getSocios();
+  DEUDAS    = GymDB.getAllDeudas();
+  CHECKINS  = GymDB.getTodayCheckins();
+  MENSAJES  = GymDB.getMensajes();
+  PRODUCTOS = GymDB.getProductos();
+  AVISOS    = GymDB.getAvisos();
+  MSGS_WA   = buildMsgsWA();
 }
 
 function mostrarToast(msg){
@@ -478,6 +486,8 @@ function intentarLogin(){
   var code=ge("login-code").value.trim().toUpperCase();
   var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo===code;});
   if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
+  TRAINER_ACTIVO=ok;
+  try{localStorage.setItem("contender_trainer",JSON.stringify(ok));}catch(e){}
   ge("login-err").textContent="";
   ge("screen-login").classList.remove("active");
   ge("nav-trainer").style.display="flex";
@@ -695,8 +705,10 @@ function renderMembresia(s){
       html+="<div style='flex:1;min-width:0'>";
       html+="  <div style='font-size:13px;font-weight:600'>Abono "+a.num+(a.pagado?" · Pagado":(vencido?" · Vencido":" · Pendiente"))+"</div>";
       html+="  <div style='font-size:11px;color:var(--muted)'>"+(a.pagado?"Pagado el "+fFecha(a.fecha_pago):"Límite: "+fFecha(a.fecha_limite))+"</div>";
+      if(a.pagado&&a.vendedor_nombre) html+="  <div style='font-size:10px;color:var(--muted)'>Cobró: "+a.vendedor_nombre+"</div>";
       html+="</div>";
       html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:"+(a.pagado?"var(--green)":vencido?"var(--red)":"var(--orange)")+"'>"+fm(a.monto)+"</div>";
+      if(!a.pagado) html+="<button class='btn bg2b bsm' data-pagar-abono='"+a.id+"' style='margin-left:6px'>✓ Cobrar</button>";
       html+="</div>";
     });
     html+="</div>";
@@ -726,9 +738,11 @@ function renderMembresia(s){
   html+="<div style='margin-top:12px'>";
   html+="<button class='btn bd bsm' style='width:100%;justify-content:center' id='btn-add-prod'>+ Agregar producto</button>";
   html+="<div id='panel-add-prod' style='display:none;margin-top:10px;background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border)'>";
-  html+="  <div class='fr'><label>Producto</label><input type='text' id='prod-nombre' placeholder='Proteína, guantes...'></div>";
+  var prodOpts="<option value=''>Selecciona producto del catálogo</option>";
+  PRODUCTOS.forEach(function(p){ prodOpts+="<option value='"+p.id+"'>"+p.nombre+" - $"+p.costo+"</option>"; });
+  html+="  <div class='fr'><label>Producto</label><select id='prod-select'>"+prodOpts+"</select></div>";
   html+="  <div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>";
-  html+="    <div class='fr'><label>Monto ($)</label><input type='number' id='prod-monto' placeholder='450' inputmode='numeric'></div>";
+  html+="    <div class='fr'><label>Monto ($)</label><input type='number' id='prod-monto' readonly></div>";
   html+="    <div class='fr'><label>Estado</label><select id='prod-status'><option value='debe'>Debe</option><option value='pagado'>Pagado</option></select></div>";
   html+="  </div>";
   html+="  <button class='btn bl' style='width:100%;justify-content:center;padding:11px' id='btn-guardar-prod'>Guardar producto</button>";
@@ -742,23 +756,45 @@ function renderMembresia(s){
   var br=ge("btn-renovar");
   if(br) br.addEventListener("click",function(){abrirModalPago(s,"Renovar membresía");});
 
+  ge("det-content").querySelectorAll("[data-pagar-abono]").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var aid=this.dataset.pagarAbono;
+      var abono=(s.abonos||[]).find(function(a){return String(a.id)===String(aid);});
+      if(!abono||abono.pagado) return;
+      pedirPin(function(){pagarAbonoTrainer(s,abono);});
+    });
+  });
+
   var bap=ge("btn-add-prod");
   if(bap) bap.addEventListener("click",function(){
     var panel=ge("panel-add-prod");
     if(panel) panel.style.display=panel.style.display==="none"?"block":"none";
   });
 
+  // Auto-llenar monto cuando selecciona producto
+  var sel=ge("prod-select");
+  if(sel) sel.addEventListener("change",function(){
+    var prodId=+this.value;
+    if(prodId){
+      var p=PRODUCTOS.find(function(x){return x.id===prodId;});
+      if(p) ge("prod-monto").value=p.costo;
+    } else {
+      ge("prod-monto").value="";
+    }
+  });
+
   var bgp=ge("btn-guardar-prod");
   if(bgp) bgp.addEventListener("click",function(){
-    var nombre=ge("prod-nombre").value.trim();
-    var monto =+ge("prod-monto").value;
+    var prodId=+ge("prod-select").value;
     var status=ge("prod-status").value;
-    if(!nombre||!monto){alert("Nombre y monto son requeridos");return;}
+    if(!prodId){alert("Selecciona un producto");return;}
+    var p=PRODUCTOS.find(function(x){return x.id===prodId;});
+    if(!p) return;
     if(!DEUDAS[s.id]) DEUDAS[s.id]=[];
-    var nuevo={id:"d"+Date.now(),producto:nombre,total:monto,fecha:new Date().toISOString().slice(0,10),status:status};
+    var nuevo={id:"d"+Date.now(),producto:p.nombre,total:p.costo,fecha:new Date().toISOString().slice(0,10),status:status};
     if(status==="debe"){ DEUDAS[s.id].push(nuevo); GymDB.saveAllDeudas(DEUDAS); }
     ge("panel-add-prod").style.display="none";
-    ge("prod-nombre").value=""; ge("prod-monto").value="";
+    ge("prod-select").value=""; ge("prod-monto").value="";
     renderDetalle();
   });
 
@@ -814,12 +850,41 @@ function renderInfoGeneral(s){
 }
 
 // ── MODAL: PAGO / RENOVAR ─────────────────────────────────────
+// ── PAGAR ABONO INDIVIDUAL (TRAINER) ─────────────────────────
+function pagarAbonoTrainer(s,abono){
+  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
+  var hoy=new Date().toISOString().slice(0,10);
+  abono.pagado=true; abono.fecha_pago=hoy;
+  abono.vendedor_id=String(t.id); abono.vendedor_nombre=t.nombre;
+  var dias=PLAN_DIAS[s.plan]||30, dv=0;
+  if(s.fecha_vencimiento){var fv=new Date(s.fecha_vencimiento+"T00:00:00"),hd=new Date();hd.setHours(0,0,0,0);dv=Math.floor((hd-fv)/86400000);}
+  var base=(!s.fecha_vencimiento||dv>10)?hoy:s.fecha_vencimiento;
+  s.fecha_vencimiento=addDays(base,dias); s.activo=true;
+  if(dv>10) s.fecha_inicio=hoy;
+  GymDB.setSocio(s); SOCIOS=GymDB.getSocios();
+  socioActual=SOCIOS.find(function(x){return x.id===s.id;})||s;
+  mostrarToast("✓ Cobrado · Vence "+fFecha(s.fecha_vencimiento));
+  renderDetalle();
+}
+
+// ── MODAL: PAGO / RENOVAR ─────────────────────────────────────
 function abrirModalPago(s,titulo){
   ge("pago-titulo").textContent=titulo;
   ge("pago-plan").value=s.plan||"Mensual";
   ge("pago-tipo").value="completo";
-  var hoy=new Date().toISOString().slice(0,10);
-  ge("pago-fecha-inicio").value=hoy;
+  var hoy=new Date().toISOString().slice(0,10), base=hoy;
+  if(s.fecha_vencimiento){var fv=new Date(s.fecha_vencimiento+"T00:00:00"),hd=new Date();hd.setHours(0,0,0,0);var dv=Math.floor((hd-fv)/86400000);if(dv>0&&dv<=10)base=s.fecha_vencimiento;}
+  ge("pago-fecha-inicio").value=base;
+  var ids=s.avisos_ids||[], TL={vencimiento:"por vencer",sin_checkin:"sin check-in",promo:"promo post-pago"};
+  var ah=AVISOS.length?"":"<div style='font-size:12px;color:var(--muted)'>Sin avisos en catálogo</div>";
+  AVISOS.forEach(function(a){
+    var ch=ids.indexOf(a.id)>-1||ids.indexOf(String(a.id))>-1;
+    ah+="<label style='display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 11px;cursor:pointer'>";
+    ah+="<input type='checkbox' data-av-id='"+a.id+"'"+(ch?" checked":"")+" style='accent-color:var(--lime);width:15px;height:15px;flex-shrink:0'>";
+    ah+="<div><div style='font-size:12px;font-weight:700'>"+a.emoji+" "+a.nombre+"</div>";
+    ah+="<div style='font-size:10px;color:var(--muted)'>"+TL[a.tipo]+" · "+a.dias+" días</div></div></label>";
+  });
+  ge("pago-avisos-lista").innerHTML=ah;
   actualizarResumenPago();
   ge("modal-pago").classList.add("open");
 }
@@ -847,30 +912,23 @@ function actualizarResumenPago(){
 }
 
 function guardarPago(){
-  var plan =ge("pago-plan").value;
-  var tipo =ge("pago-tipo").value;
-  var fi   =ge("pago-fecha-inicio").value;
-  var s    =socioActual; if(!s||!fi) return;
-
-  var dias =PLAN_DIAS[plan]||30;
-  s.plan             =plan;
-  s.fecha_inicio     =fi;
-  s.fecha_vencimiento=addDays(fi,dias);
-
+  var plan=ge("pago-plan").value, tipo=ge("pago-tipo").value, fi=ge("pago-fecha-inicio").value;
+  var s=socioActual; if(!s||!fi) return;
+  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
+  var avisosIds=[];
+  ge("pago-avisos-lista").querySelectorAll("input[data-av-id]:checked").forEach(function(cb){avisosIds.push(+cb.dataset.avId);});
+  var dias=PLAN_DIAS[plan]||30;
+  s.plan=plan; s.fecha_inicio=fi; s.fecha_vencimiento=addDays(fi,dias);
+  s.activo=true; s.avisos_ids=avisosIds;
   if(tipo==="parcial"&&PLAN_ABONOS[plan]&&PLAN_ABONOS[plan].length){
     s.abonos=PLAN_ABONOS[plan].map(function(a,i){
-      return {num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};
+      return{num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null,vendedor_id:String(t.id),vendedor_nombre:t.nombre};
     });
   } else {
-    // Pago único: un solo abono marcado como pagado
-    s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi}];
+    s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi,vendedor_id:String(t.id),vendedor_nombre:t.nombre}];
   }
-
-  GymDB.setSocio(s);
-  SOCIOS = GymDB.getSocios();
-  ge("modal-pago").classList.remove("open");
-  detTab="membresia";
-  renderDetalle();
+  GymDB.setSocio(s); SOCIOS=GymDB.getSocios();
+  ge("modal-pago").classList.remove("open"); detTab="membresia"; renderDetalle();
 }
 
 // ── PIN DE ADMIN ──────────────────────────────────────────────
