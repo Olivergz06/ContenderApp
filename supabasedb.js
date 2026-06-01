@@ -31,6 +31,10 @@ var GymDB = (function () {
     cuentas:   []
   };
 
+  // Socios nuevos en vuelo (POST enviado, Supabase aún no confirmó)
+  // loadAll() los reinyecta al cache para que el sync no los pierda
+  var _pending = {};
+
   // ── HTTP helpers ───────────────────────────────────────────────
   function h(extra) {
     var base = {
@@ -93,9 +97,19 @@ var GymDB = (function () {
       // Socios con abonos embebidos
       C.socios = (res[0]||[]).map(function(s) {
         s.abonos = (s.abonos||[]).sort(function(a,b){ return a.numero-b.numero; });
-        // ids de abonos como string para comparaciones consistentes
         s.abonos.forEach(function(a){ a.id = String(a.id); });
         return s;
+      });
+
+      // Reinyectar socios pendientes (POST en vuelo aún no confirmado por Supabase)
+      // Evita que el polling de 60s borre un registro recién creado
+      Object.keys(_pending).forEach(function(id) {
+        if (findIdx(C.socios, id) === -1) {
+          C.socios.push(_pending[id]);
+        } else {
+          // Ya llegó a Supabase — quitar del buffer
+          delete _pending[id];
+        }
       });
 
       // Deudas → { socio_id: [deudas] }
@@ -180,20 +194,20 @@ var GymDB = (function () {
       if (idx > -1) {
         C.socios[idx] = socio;
         pat('socios', 'id=eq.'+socio.id, data);
-        bump(); // PATCH es inmediato, puede bumpar ya
+        bump();
       } else {
+        // Nuevo socio: guardar en buffer pendiente antes del POST
+        _pending[socio.id] = socio;
         C.socios.push(socio);
-        // Esperar a que Supabase confirme antes de notificar a otros tabs
         post('socios', data).then(function(r) {
-          if (r && r[0] && r[0].id) {
-            // Supabase confirmó — ahora sí notificar
-            bump();
-          } else {
-            console.warn('[GymDB] POST socio sin respuesta confirmada', r);
-            bump(); // bumpar de todas formas para no bloquear
-          }
+          // Supabase confirmó — quitar del buffer y notificar
+          delete _pending[socio.id];
+          bump();
+        }).catch(function(e) {
+          console.error('[GymDB] Error guardando socio', e);
+          // Dejar en pending para que loadAll lo reinyecte
         });
-        return; // salir sin bump prematuro
+        return; // no bumpar todavía
       }
 
       // Sincronizar abonos
