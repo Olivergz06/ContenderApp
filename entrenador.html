@@ -205,19 +205,23 @@ textarea{resize:vertical;min-height:70px;}
     <div class="hdr-r"><button class="btn bd bsm" id="btn-form-cancel">Cancelar</button></div>
   </div>
   <div class="sec" style="padding-bottom:20px">
+    <div class="fr" id="f-id-wrap">
+      <label>Núm. Socio <span id="f-id-hint" style="color:var(--muted);font-weight:400;font-size:10px"></span></label>
+      <input type="text" id="f-id" inputmode="numeric" style="background:var(--bg3)">
+    </div>
     <div class="f2">
-      <div class="fr"><label>Núm. Socio</label><input type="text" id="f-id" placeholder="007" inputmode="numeric"></div>
       <div class="fr"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
-    </div>
-    <div class="f2">
       <div class="fr"><label>Ap. Paterno</label><input type="text" id="f-ap" placeholder="Apellido P."></div>
-      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Apellido M."></div>
     </div>
     <div class="f2">
+      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Apellido M."></div>
       <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="55 1234 5678" inputmode="numeric"></div>
-      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
     </div>
-    <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
+    <div class="f2">
+      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
+      <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
+    </div>
+    <div class="fr"><label>Fecha de registro</label><input type="date" id="f-inicio"></div>
     <div class="f2">
       <div class="fr"><label>Plan</label>
         <select id="f-plan">
@@ -228,9 +232,10 @@ textarea{resize:vertical;min-height:70px;}
           <option value="Anual">Anual</option>
         </select>
       </div>
-      <div class="fr"><label>Vencimiento</label><input type="date" id="f-vence"></div>
+      <div class="fr"><label>Vencimiento <span style="color:var(--muted);font-size:10px">(automático)</span></label>
+        <input type="date" id="f-vence" style="color:var(--muted)">
+      </div>
     </div>
-    <div class="fr"><label>Fecha de alta</label><input type="date" id="f-inicio"></div>
     <div class="f2">
       <div class="fr"><label>Nacimiento</label><input type="date" id="f-nac"></div>
       <div class="fr"><label>Sexo</label>
@@ -351,10 +356,6 @@ textarea{resize:vertical;min-height:70px;}
       </select>
     </div>
     <div id="pago-resumen" style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);margin-top:4px;font-size:12px;color:var(--muted);line-height:1.8"></div>
-    <div style="margin-top:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Avisos en pantalla</div>
-      <div id="pago-avisos-lista" style="display:flex;flex-direction:column;gap:6px"></div>
-    </div>
     <div class="mbtns">
       <button class="btn bd" style="flex:1;padding:13px" data-close="modal-pago">Cancelar</button>
       <button class="btn bl" style="flex:1;padding:13px" id="pago-guardar">Confirmar</button>
@@ -388,8 +389,6 @@ textarea{resize:vertical;min-height:70px;}
 var _gymdbReady = GymDB.init(); // Promise
 
 var TRAINERS    = [];
-var AVISOS      = [];
-var TRAINER_ACTIVO = null;
 var PIN_ADMIN   = "1234";
 var PLAN_PRECIO = {Mensual:1200,Trimestral:3200,Semestral:5800,Anual:11000};
 var PLAN_DIAS   = {Mensual:30,Trimestral:90,Semestral:180,Anual:365};
@@ -417,7 +416,6 @@ function recargarDatos(){
   CHECKINS  = GymDB.getTodayCheckins();
   MENSAJES  = GymDB.getMensajes();
   PRODUCTOS = GymDB.getProductos();
-  AVISOS    = GymDB.getAvisos();
   MSGS_WA   = buildMsgsWA();
 }
 
@@ -486,8 +484,6 @@ function intentarLogin(){
   var code=ge("login-code").value.trim().toUpperCase();
   var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo===code;});
   if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
-  TRAINER_ACTIVO=ok;
-  try{localStorage.setItem("contender_trainer",JSON.stringify(ok));}catch(e){}
   ge("login-err").textContent="";
   ge("screen-login").classList.remove("active");
   ge("nav-trainer").style.display="flex";
@@ -633,25 +629,68 @@ function confirmarCheckin(){
   ge("modal-checkin").classList.remove("open");
   renderInicio();
 }
+function nextSocioId(){
+  if(!SOCIOS.length) return "001";
+  var max=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0);
+  var n=max+1;
+  return n<10?"00"+n:n<100?"0"+n:String(n);
+}
+
+function calcVencimiento(){
+  var fi=ge("f-inicio").value, plan=ge("f-plan").value;
+  if(fi&&plan&&PLAN_DIAS[plan]){
+    ge("f-vence").value=addDays(fi,PLAN_DIAS[plan]);
+    ge("f-vence").style.color="var(--lime)";
+  }
+}
+
+function abrirNuevoSocio(){
+  ge("form-titulo").textContent="Nuevo Socio";
+  var nid=nextSocioId();
+  ge("f-id").value=nid;
+  ge("f-id").readOnly=true;
+  ge("f-id").style.color="var(--muted)";
+  ge("f-id-hint").textContent="(auto: "+nid+")";
+  ge("f-inicio").value=new Date().toISOString().slice(0,10);
+  ["f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
+  ge("f-plan").value=""; ge("f-vence").value=""; ge("f-nac").value=""; ge("f-sexo").value="";
+  ge("f-vence").style.color="var(--muted)";
+  showScreen("form");
+}
+
+function abrirEditarSocio(id){
+  var s=SOCIOS.find(function(x){return x.id===id;}); if(!s) return;
+  ge("form-titulo").textContent="Editar Socio";
+  ge("f-id").value=s.id; ge("f-id").readOnly=true;
+  ge("f-id").style.color="var(--muted)"; ge("f-id-hint").textContent="";
+  ge("f-nombre").value=s.nombre; ge("f-ap").value=s.apellido_paterno; ge("f-am").value=s.apellido_materno||"";
+  ge("f-tel").value=s.numero||""; ge("f-emerg").value=s.numero_emergencia||""; ge("f-correo").value=s.correo||"";
+  ge("f-notas").value=s.notas||""; ge("f-vence").value=s.fecha_vencimiento||""; ge("f-inicio").value=s.fecha_inicio||"";
+  ge("f-nac").value=s.fecha_nacimiento||""; ge("f-plan").value=s.plan||""; ge("f-sexo").value=s.sexo||"";
+  ge("f-vence").style.color=s.fecha_vencimiento?"var(--lime)":"var(--muted)";
+  showScreen("form");
+}
+
 function guardarSocio(){
   var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  if(!id||!nombre||!ap){alert("Número, nombre y apellido son requeridos");return;}
+  if(!id||!nombre||!ap){alert("Nombre y apellido son requeridos");return;}
+  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
+  var prev=SOCIOS.find(function(x){return x.id===id;})||{};
   var datos={
     id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
     numero:ge("f-tel").value.trim(), numero_emergencia:ge("f-emerg").value.trim(),
     correo:ge("f-correo").value.trim(), notas:ge("f-notas").value.trim(),
     fecha_vencimiento:ge("f-vence").value, fecha_inicio:ge("f-inicio").value,
-    fecha_nacimiento:ge("f-nac").value, plan:ge("f-plan").value,
-    sexo:ge("f-sexo").value, visitas:0, activo:true, abonos:[]
+    fecha_nacimiento:ge("f-nac").value, plan:ge("f-plan").value, sexo:ge("f-sexo").value,
+    visitas:prev.visitas||0, activo:prev.activo!==undefined?prev.activo:true,
+    abonos:prev.abonos||[], avisos_ids:prev.avisos_ids||[],
+    vendedor_id:prev.vendedor_id||String(t.id),
+    vendedor_nombre:prev.vendedor_nombre||t.nombre
   };
-  var idx=SOCIOS.findIndex(function(x){return x.id===id;});
-  if(idx>-1){
-    datos.visitas=SOCIOS[idx].visitas; datos.activo=SOCIOS[idx].activo; datos.abonos=SOCIOS[idx].abonos||[];
-    SOCIOS[idx]=datos;
-  } else {
-    SOCIOS.push(datos);
-  }
-  GymDB.saveSocios(SOCIOS);
+  // ← Fix crítico: setSocio escribe a Supabase (saveSocios solo actualizaba cache local)
+  GymDB.setSocio(datos);
+  SOCIOS=GymDB.getSocios();
+  mostrarToast("✓ Socio guardado");
   showScreen("socios");
 }
 
@@ -705,10 +744,8 @@ function renderMembresia(s){
       html+="<div style='flex:1;min-width:0'>";
       html+="  <div style='font-size:13px;font-weight:600'>Abono "+a.num+(a.pagado?" · Pagado":(vencido?" · Vencido":" · Pendiente"))+"</div>";
       html+="  <div style='font-size:11px;color:var(--muted)'>"+(a.pagado?"Pagado el "+fFecha(a.fecha_pago):"Límite: "+fFecha(a.fecha_limite))+"</div>";
-      if(a.pagado&&a.vendedor_nombre) html+="  <div style='font-size:10px;color:var(--muted)'>Cobró: "+a.vendedor_nombre+"</div>";
       html+="</div>";
       html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:"+(a.pagado?"var(--green)":vencido?"var(--red)":"var(--orange)")+"'>"+fm(a.monto)+"</div>";
-      if(!a.pagado) html+="<button class='btn bg2b bsm' data-pagar-abono='"+a.id+"' style='margin-left:6px'>✓ Cobrar</button>";
       html+="</div>";
     });
     html+="</div>";
@@ -755,15 +792,6 @@ function renderMembresia(s){
   // Eventos
   var br=ge("btn-renovar");
   if(br) br.addEventListener("click",function(){abrirModalPago(s,"Renovar membresía");});
-
-  ge("det-content").querySelectorAll("[data-pagar-abono]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      var aid=this.dataset.pagarAbono;
-      var abono=(s.abonos||[]).find(function(a){return String(a.id)===String(aid);});
-      if(!abono||abono.pagado) return;
-      pedirPin(function(){pagarAbonoTrainer(s,abono);});
-    });
-  });
 
   var bap=ge("btn-add-prod");
   if(bap) bap.addEventListener("click",function(){
@@ -834,9 +862,11 @@ function renderInfoGeneral(s){
   html+="<button class='btn bwa' style='flex:1;justify-content:center;padding:12px' id='btn-info-wa'>&#128241; WhatsApp</button>";
   html+="<button class='btn "+(s.activo?"br":"bg2b")+"' style='flex:1;justify-content:center;padding:12px' id='btn-toggle-activo'>"+(s.activo?"&#10006; Desactivar":"&#10003; Activar")+"</button>";
   html+="</div>";
+  html+="<div style='margin-top:8px'><button class='btn bd bsm' id='btn-editar-soc' style='width:100%;justify-content:center'>&#9999; Editar información</button></div>";
   html+="</div>";
   ge("det-content").innerHTML=html;
 
+  ge("btn-editar-soc").addEventListener("click",function(){abrirEditarSocio(s.id);});
   ge("btn-info-wa").addEventListener("click",function(){abrirWA(s.id);});
   ge("btn-toggle-activo").addEventListener("click",function(){
     var label=s.activo?"desactivar":"activar";
@@ -850,41 +880,12 @@ function renderInfoGeneral(s){
 }
 
 // ── MODAL: PAGO / RENOVAR ─────────────────────────────────────
-// ── PAGAR ABONO INDIVIDUAL (TRAINER) ─────────────────────────
-function pagarAbonoTrainer(s,abono){
-  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
-  var hoy=new Date().toISOString().slice(0,10);
-  abono.pagado=true; abono.fecha_pago=hoy;
-  abono.vendedor_id=String(t.id); abono.vendedor_nombre=t.nombre;
-  var dias=PLAN_DIAS[s.plan]||30, dv=0;
-  if(s.fecha_vencimiento){var fv=new Date(s.fecha_vencimiento+"T00:00:00"),hd=new Date();hd.setHours(0,0,0,0);dv=Math.floor((hd-fv)/86400000);}
-  var base=(!s.fecha_vencimiento||dv>10)?hoy:s.fecha_vencimiento;
-  s.fecha_vencimiento=addDays(base,dias); s.activo=true;
-  if(dv>10) s.fecha_inicio=hoy;
-  GymDB.setSocio(s); SOCIOS=GymDB.getSocios();
-  socioActual=SOCIOS.find(function(x){return x.id===s.id;})||s;
-  mostrarToast("✓ Cobrado · Vence "+fFecha(s.fecha_vencimiento));
-  renderDetalle();
-}
-
-// ── MODAL: PAGO / RENOVAR ─────────────────────────────────────
 function abrirModalPago(s,titulo){
   ge("pago-titulo").textContent=titulo;
   ge("pago-plan").value=s.plan||"Mensual";
   ge("pago-tipo").value="completo";
-  var hoy=new Date().toISOString().slice(0,10), base=hoy;
-  if(s.fecha_vencimiento){var fv=new Date(s.fecha_vencimiento+"T00:00:00"),hd=new Date();hd.setHours(0,0,0,0);var dv=Math.floor((hd-fv)/86400000);if(dv>0&&dv<=10)base=s.fecha_vencimiento;}
-  ge("pago-fecha-inicio").value=base;
-  var ids=s.avisos_ids||[], TL={vencimiento:"por vencer",sin_checkin:"sin check-in",promo:"promo post-pago"};
-  var ah=AVISOS.length?"":"<div style='font-size:12px;color:var(--muted)'>Sin avisos en catálogo</div>";
-  AVISOS.forEach(function(a){
-    var ch=ids.indexOf(a.id)>-1||ids.indexOf(String(a.id))>-1;
-    ah+="<label style='display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 11px;cursor:pointer'>";
-    ah+="<input type='checkbox' data-av-id='"+a.id+"'"+(ch?" checked":"")+" style='accent-color:var(--lime);width:15px;height:15px;flex-shrink:0'>";
-    ah+="<div><div style='font-size:12px;font-weight:700'>"+a.emoji+" "+a.nombre+"</div>";
-    ah+="<div style='font-size:10px;color:var(--muted)'>"+TL[a.tipo]+" · "+a.dias+" días</div></div></label>";
-  });
-  ge("pago-avisos-lista").innerHTML=ah;
+  var hoy=new Date().toISOString().slice(0,10);
+  ge("pago-fecha-inicio").value=hoy;
   actualizarResumenPago();
   ge("modal-pago").classList.add("open");
 }
@@ -912,23 +913,30 @@ function actualizarResumenPago(){
 }
 
 function guardarPago(){
-  var plan=ge("pago-plan").value, tipo=ge("pago-tipo").value, fi=ge("pago-fecha-inicio").value;
-  var s=socioActual; if(!s||!fi) return;
-  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
-  var avisosIds=[];
-  ge("pago-avisos-lista").querySelectorAll("input[data-av-id]:checked").forEach(function(cb){avisosIds.push(+cb.dataset.avId);});
-  var dias=PLAN_DIAS[plan]||30;
-  s.plan=plan; s.fecha_inicio=fi; s.fecha_vencimiento=addDays(fi,dias);
-  s.activo=true; s.avisos_ids=avisosIds;
+  var plan =ge("pago-plan").value;
+  var tipo =ge("pago-tipo").value;
+  var fi   =ge("pago-fecha-inicio").value;
+  var s    =socioActual; if(!s||!fi) return;
+
+  var dias =PLAN_DIAS[plan]||30;
+  s.plan             =plan;
+  s.fecha_inicio     =fi;
+  s.fecha_vencimiento=addDays(fi,dias);
+
   if(tipo==="parcial"&&PLAN_ABONOS[plan]&&PLAN_ABONOS[plan].length){
     s.abonos=PLAN_ABONOS[plan].map(function(a,i){
-      return{num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null,vendedor_id:String(t.id),vendedor_nombre:t.nombre};
+      return {num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};
     });
   } else {
-    s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi,vendedor_id:String(t.id),vendedor_nombre:t.nombre}];
+    // Pago único: un solo abono marcado como pagado
+    s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi}];
   }
-  GymDB.setSocio(s); SOCIOS=GymDB.getSocios();
-  ge("modal-pago").classList.remove("open"); detTab="membresia"; renderDetalle();
+
+  GymDB.setSocio(s);
+  SOCIOS = GymDB.getSocios();
+  ge("modal-pago").classList.remove("open");
+  detTab="membresia";
+  renderDetalle();
 }
 
 // ── PIN DE ADMIN ──────────────────────────────────────────────
@@ -1010,14 +1018,7 @@ document.addEventListener("DOMContentLoaded",function(){
   // Sort y búsqueda
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("soc-buscar").addEventListener("input",renderSocios);
-  ge("btn-nuevo-socio").addEventListener("click",function(){
-    socioActual=null;
-    ge("form-titulo").textContent="Nuevo Socio";
-    ["f-id","f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
-    ge("f-vence").value=""; ge("f-inicio").value=""; ge("f-nac").value="";
-    ge("f-plan").value=""; ge("f-sexo").value="";
-    showScreen("form");
-  });
+  ge("btn-nuevo-socio").addEventListener("click", abrirNuevoSocio);
   ge("btn-orden-dir").addEventListener("click",function(){
     ordenAsc=!ordenAsc;
     this.textContent=ordenAsc?"↑":"↓";
@@ -1035,6 +1036,8 @@ document.addEventListener("DOMContentLoaded",function(){
 
   ge("btn-form-cancel").addEventListener("click",function(){ showScreen("socios"); });
   ge("btn-guardar-socio").addEventListener("click", guardarSocio);
+  ge("f-plan").addEventListener("change", calcVencimiento);
+  ge("f-inicio").addEventListener("change", calcVencimiento);
   ge("btn-det-back").addEventListener("click",function(){ showScreen("socios"); });
 
   // Modal pago
