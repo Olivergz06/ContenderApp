@@ -191,7 +191,7 @@ textarea{resize:vertical;min-height:70px;}
   <div class="hdr">
     <div><h1>Socios</h1></div>
     <div class="hdr-r">
-      <button class="btn bd bsm" id="btn-sync-socios">↻</button>
+      <button class="btn bd bsm" id="btn-sync-ad">↻</button>
       <button class="btn bl bsm" id="btn-nuevo-soc">+ Agregar</button>
     </div>
   </div>
@@ -569,7 +569,7 @@ function showScreen(id){
     b.classList.toggle("active",b.dataset.screen===id);
   });
   if(id==="inicio")   renderInicio();
-  if(id==="socios")   { renderSocios(); GymDB.init().then(function(){ recargarDatos(); renderSocios(); }); }
+  if(id==="socios"){ renderSocios(); GymDB.init().then(function(){ recargarDatos(); renderSocios(); }); }
   if(id==="catalogo") renderCatalogo();
   if(id==="reportes") renderReporte();
   if(id==="dashboard")renderGrafica();
@@ -805,29 +805,15 @@ function renderTabInfo(s){
 
 // ── FORMULARIO SOCIO ──────────────────────────────────────────
 var socEditId=null;
-
-function _calcVenc(){
-  var fi=ge("f-inicio").value, plan=ge("f-plan").value;
-  if(fi && PLAN_DIAS[plan]){
-    ge("f-vence").value=addDays(fi,PLAN_DIAS[plan]);
-    ge("f-vence").style.color="var(--lime)";
-  }
-}
-function _nextSocioId(){
-  if(!SOCIOS.length) return "001";
-  var max=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0);
-  var n=max+1; return n<10?"00"+n:n<100?"0"+n:String(n);
-}
+function _nextId(){ if(!SOCIOS.length)return"001"; var mx=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0),n=mx+1; return n<10?"00"+n:n<100?"0"+n:String(n); }
+function _calcVenc(){ var fi=ge("f-inicio").value,pl=ge("f-plan").value; if(fi&&PLAN_DIAS[pl]){ge("f-vence").value=addDays(fi,PLAN_DIAS[pl]);ge("f-vence").style.color="var(--lime)";} }
 function abrirNuevoSoc(){
-  socEditId=null;
-  ge("form-titulo").textContent="Nuevo Socio";
-  var nid=_nextSocioId();
-  ge("f-id").value=nid; ge("f-id-hint").textContent="auto";
+  socEditId=null; ge("form-titulo").textContent="Nuevo Socio";
+  ge("f-id").value=_nextId(); ge("f-id-hint").textContent="auto";
   ge("f-inicio").value=new Date().toISOString().slice(0,10);
   ["f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
-  ge("f-plan").value=""; ge("f-vence").value=""; ge("f-nac").value=""; ge("f-sexo").value="";
-  ge("f-vence").style.color="var(--muted)";
-  showScreen("form");
+  ge("f-plan").value="";ge("f-vence").value="";ge("f-nac").value="";ge("f-sexo").value="";
+  ge("f-vence").style.color="var(--muted)"; showScreen("form");
 }
 function abrirEditarSoc(id){
   var s=SOCIOS.find(function(x){return x.id===id;}); if(!s) return;
@@ -844,28 +830,28 @@ function abrirEditarSoc(id){
 }
 function guardarSoc(){
   var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  if(!nombre||!ap){ alert("Nombre y apellido son requeridos"); return; }
-  if(!id){ alert("Error: sin número de socio"); return; }
+  if(!nombre||!ap){alert("Nombre y apellido son requeridos");return;}
+  if(!id){alert("Error: sin número");return;}
   var fi=ge("f-inicio").value, plan=ge("f-plan").value, vence=ge("f-vence").value;
   if(fi&&plan&&!vence&&PLAN_DIAS[plan]) vence=addDays(fi,PLAN_DIAS[plan]);
   var prev=SOCIOS.find(function(x){return x.id===id;})||{};
-  var datos={
-    id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
-    numero:ge("f-tel").value.trim()||null,
-    numero_emergencia:ge("f-emerg").value.trim()||null,
-    correo:ge("f-correo").value.trim()||null,
-    notas:ge("f-notas").value.trim()||null,
-    fecha_vencimiento:vence||null, fecha_inicio:fi||null,
-    fecha_nacimiento:ge("f-nac").value||null,
+  var datos={id:id,nombre:nombre,apellido_paterno:ap,apellido_materno:ge("f-am").value.trim()||null,
+    numero:ge("f-tel").value.trim()||null, numero_emergencia:ge("f-emerg").value.trim()||null,
+    correo:ge("f-correo").value.trim()||null, notas:ge("f-notas").value.trim()||null,
+    fecha_vencimiento:vence||null, fecha_inicio:fi||null, fecha_nacimiento:ge("f-nac").value||null,
     plan:plan||null, sexo:ge("f-sexo").value||null,
     visitas:prev.visitas||0, activo:prev.activo!==undefined?prev.activo:true,
-    abonos:prev.abonos||[], color:prev.color||"#C8F135"
-  };
+    abonos:prev.abonos||[], color:prev.color||"#C8F135"};
+  var btn=ge("btn-guardar-soc"); btn.disabled=true; btn.textContent="Guardando…";
   GymDB.setSocio(datos);
   SOCIOS=GymDB.getSocios();
   if(socioActual&&socioActual.id===id) socioActual=datos;
-  mostrarToast("✓ Socio guardado");
-  showScreen("socios");
+  // Esperar confirmación de Supabase antes de navegar
+  setTimeout(function(){
+    btn.disabled=false; btn.textContent="Guardar";
+    mostrarToast("✓ Socio guardado");
+    showScreen("socios");
+  }, 1500);
 }
 
 // ── MODAL PAGO ────────────────────────────────────────────────
@@ -1241,15 +1227,12 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("btn-orden-dir").addEventListener("click",function(){ordenAsc=!ordenAsc;this.textContent=ordenAsc?"↑":"↓";renderSocios();});
   ge("btn-nuevo-soc").addEventListener("click",abrirNuevoSoc);
-  ge("btn-sync-socios").addEventListener("click",function(){
-    var b=this; b.textContent="…"; b.disabled=true;
-    GymDB.init().then(function(){ recargarDatos(); renderSocios(); b.textContent="↻"; b.disabled=false; mostrarToast("↻ Actualizado"); });
-  });
+  ge("btn-sync-ad").addEventListener("click",function(){var b=this;b.textContent="…";b.disabled=true;GymDB.init().then(function(){recargarDatos();renderSocios();b.textContent="↻";b.disabled=false;mostrarToast("↻ Actualizado");});});
+  ge("f-plan").addEventListener("change",_calcVenc);
+  ge("f-inicio").addEventListener("change",_calcVenc);
   ge("btn-det-back").addEventListener("click",function(){showScreen("socios");});
   ge("btn-form-cancel").addEventListener("click",function(){showScreen("socios");});
   ge("btn-guardar-soc").addEventListener("click",guardarSoc);
-  ge("f-plan").addEventListener("change",_calcVenc);
-  ge("f-inicio").addEventListener("change",_calcVenc);
   document.querySelectorAll(".tab[data-det]").forEach(function(b){b.addEventListener("click",function(){detTab=this.dataset.det;document.querySelectorAll(".tab[data-det]").forEach(function(x){x.classList.toggle("active",x.dataset.det===detTab);});renderDetalle();});});
 
   // Catálogo
