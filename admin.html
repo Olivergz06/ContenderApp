@@ -477,7 +477,7 @@ var _gymdbReady = GymDB.init(); // Promise
 
 var SOCIOS=[], DEUDAS={}, CHECKINS=[], MEMBRESIAS=[], CLASES=[], PRODUCTOS=[], MENSAJES_CAT=[], VENTAS=[];
 var nextDeuId = Date.now();
-// nextCatId eliminado — Supabase asigna IDs automáticamente via SERIAL
+
 var HISTORICO = {ventas:[],checkins:[],socios:[]};
 
 // MSGS_WA: se construye desde MENSAJES_CAT para el modal de WA
@@ -983,8 +983,8 @@ function catAbrirMemb(id){
   ge("cat-guardar").onclick=function(){
     var nombre=ge("cm-nombre").value.trim(),dias=+ge("cm-dias").value,precio=+ge("cm-precio").value;
     if(!nombre||!dias||!precio){alert("Completa los campos");return;}
-    if(catEditId){var idx=MEMBRESIAS.findIndex(function(x){return x.id===catEditId;});if(idx>-1)MEMBRESIAS[idx]={id:catEditId,nombre:nombre,dias:dias,precio:precio,desc:ge("cm-desc").value.trim()};}
-    else MEMBRESIAS.push({nombre:nombre,dias:dias,precio:precio,desc:ge("cm-desc").value.trim()});
+    if(catEditId){var idx=MEMBRESIAS.findIndex(function(x){return x.id===catEditId;});if(idx>-1)MEMBRESIAS[idx]={id:catEditId,nombre:nombre,dias:dias,precio:precio,descripcion:ge("cm-desc").value.trim()};}
+    else MEMBRESIAS.push({nombre:nombre,dias:dias,precio:precio,descripcion:ge("cm-desc").value.trim()});
     GymDB.saveMembresias(MEMBRESIAS);
     ge("modal-cat").classList.remove("open");renderCatalogo();
   };

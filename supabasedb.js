@@ -209,7 +209,9 @@ var GymDB = (function () {
         _pending[String(socio.id)] = socio;
         C.socios.push(socio);
         post('socios', data).then(function(r){
-          if(r&&!r._error&&Array.isArray(r)&&r.length>0){ delete _pending[String(socio.id)]; bump(); }
+          if(r&&!r._error&&Array.isArray(r)&&r.length>0){
+            delete _pending[String(socio.id)]; bump();
+          }
         });
         return;
       }
@@ -435,31 +437,41 @@ var GymDB = (function () {
 
   // ── Helper: sync de tablas de catálogo ─────────────────────────
   function _syncCat(table, prev, next, fields) {
+    // prevMap solo con ids REALES de Supabase (números pequeños tipo SERIAL)
+    // Un id "real" existe en la tabla; un id falso (Date.now()) no existe
     var prevMap = {};
     prev.forEach(function(p){ if(p.id) prevMap[String(p.id)]=p; });
 
     next.forEach(function(item) {
       var body = {};
-      fields.forEach(function(f){ body[f] = (item[f]===''||item[f]===undefined) ? null : item[f]; });
+      fields.forEach(function(f){
+        var v = item[f];
+        body[f] = (v===''||v===undefined) ? null : v;
+      });
 
-      if (item.id && prevMap[String(item.id)]) {
-        // Existente: PATCH solo si cambió
+      var sid = item.id ? String(item.id) : null;
+      var enSupabase = sid && prevMap[sid];
+
+      if (enSupabase) {
+        // Existe en Supabase → PATCH solo si cambió
         var cambio = fields.some(function(f){
-          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[String(item.id)][f]);
+          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[sid][f]);
         });
         if (cambio) pat(table, 'id=eq.'+item.id, body);
-      } else if (!item.id) {
-        // Nuevo: POST sin id, Supabase asigna SERIAL
+      } else {
+        // Nuevo (sin id, o con id falso que no está en Supabase) → POST
+        // NO incluir id en body: Supabase asigna SERIAL automáticamente
         post(table, body).then(function(r){
-          if(r && !r._error && Array.isArray(r) && r[0]) {
-            item.id = r[0].id; // guardar el id real
+          if(r&&!r._error&&Array.isArray(r)&&r[0]){
+            item.id = r[0].id; // guardar el id real de Supabase
           }
         });
       }
     });
 
-    // Eliminados: solo los que tenían id real
-    var nextIds = next.filter(function(n){ return n.id; }).map(function(n){ return String(n.id); });
+    // Eliminados: solo ids reales que ya no están en next
+    var nextIds = next.filter(function(n){ return n.id && prevMap[String(n.id)]; })
+                      .map(function(n){ return String(n.id); });
     prev.forEach(function(p) {
       if (p.id && nextIds.indexOf(String(p.id)) === -1) del(table, 'id=eq.'+p.id);
     });
