@@ -31,10 +31,6 @@ var GymDB = (function () {
     cuentas:   []
   };
 
-  // Socios nuevos en vuelo (POST enviado, Supabase aún no confirmó)
-  // loadAll() los reinyecta al cache para que el sync no los pierda
-  var _pending = {};
-
   // ── HTTP helpers ───────────────────────────────────────────────
   function h(extra) {
     var base = {
@@ -52,10 +48,20 @@ var GymDB = (function () {
     if (body !== undefined) opts.body = JSON.stringify(body);
     return fetch(url, opts)
       .then(function(r) {
-        if (r.status === 204) return [];
-        return r.json();
+        if (r.status === 204) return { _ok: true, data: [] };
+        return r.json().then(function(json) {
+          return { _ok: r.ok, _status: r.status, data: json };
+        });
       })
-      .catch(function(e) { console.error('[GymDB]', method, table, e); return []; });
+      .then(function(res) {
+        if (!res._ok) {
+          // Loguear el error para debug
+          console.error('[GymDB]', method, table, res._status, res.data);
+        }
+        // Siempre devolver los datos (array en éxito, objeto en error)
+        return res.data;
+      })
+      .catch(function(e) { console.error('[GymDB]', method, table, e); return null; });
   }
 
   var get  = function(t,q)   { return sbFetch('GET',   t, q); };
@@ -63,13 +69,19 @@ var GymDB = (function () {
   var pat  = function(t,q,b) { return sbFetch('PATCH', t, q, b); };
   var del  = function(t,q)   { return sbFetch('DELETE',t, q); };
 
+  // Convierte string vacío a null (evita errores en columnas date/int de Supabase)
+  function nullIfEmpty(v) { return (v === '' || v === undefined) ? null : v; }
+
   // ── Utilidades ─────────────────────────────────────────────────
   function hoy() { return new Date().toISOString().slice(0,10); }
 
   function findIdx(arr, id) {
-    for (var i=0; i<arr.length; i++) if (arr[i].id===id) return i;
+    for (var i=0; i<arr.length; i++) if (String(arr[i].id)===String(id)) return i;
     return -1;
   }
+
+  // Socios nuevos en vuelo (POST enviado, Supabase aún no confirmó)
+  var _pending = {};
 
   // Notifica a otros tabs que hubo un cambio
   function bump() {
@@ -98,17 +110,17 @@ var GymDB = (function () {
       C.socios = (res[0]||[]).map(function(s) {
         s.abonos = (s.abonos||[]).sort(function(a,b){ return a.numero-b.numero; });
         s.abonos.forEach(function(a){ a.id = String(a.id); });
+        // Normalizar id a string
+        s.id = String(s.id);
         return s;
       });
 
-      // Reinyectar socios pendientes (POST en vuelo aún no confirmado por Supabase)
-      // Evita que el polling de 60s borre un registro recién creado
+      // Reinyectar socios en vuelo que Supabase aún no tiene
       Object.keys(_pending).forEach(function(id) {
         if (findIdx(C.socios, id) === -1) {
-          C.socios.push(_pending[id]);
+          C.socios.push(_pending[id]); // aún no llegó a Supabase
         } else {
-          // Ya llegó a Supabase — quitar del buffer
-          delete _pending[id];
+          delete _pending[id]; // ya llegó, limpiar buffer
         }
       });
 
@@ -189,23 +201,41 @@ var GymDB = (function () {
       var idx    = findIdx(C.socios, socio.id);
       var abonos = (socio.abonos || []).slice();
       var data   = {};
-      Object.keys(socio).forEach(function(k){ if(k!=='abonos') data[k]=socio[k]; });
+      Object.keys(socio).forEach(function(k){
+        if (k === 'abonos') return;
+        // Convertir strings vacíos a null en campos que Supabase rechazaría
+        var v = socio[k];
+        if (k === 'fecha_vencimiento' || k === 'fecha_inicio' ||
+            k === 'fecha_nacimiento'  || k === 'fecha_pago') {
+          data[k] = nullIfEmpty(v);
+        } else {
+          data[k] = (v === '') ? null : v;
+        }
+      });
 
       if (idx > -1) {
+        // Registro existente → PATCH
         C.socios[idx] = socio;
         pat('socios', 'id=eq.'+socio.id, data);
         bump();
       } else {
-        // Nuevo socio: guardar en buffer pendiente antes del POST
-        _pending[socio.id] = socio;
+        // Registro nuevo → guardar en buffer y esperar confirmación
         C.socios.push(socio);
+        _pending[String(socio.id)] = socio;
         post('socios', data).then(function(r) {
-          // Supabase confirmó — quitar del buffer y notificar
-          delete _pending[socio.id];
-          bump();
-        }).catch(function(e) {
-          console.error('[GymDB] Error guardando socio', e);
-          // Dejar en pending para que loadAll lo reinyecte
+          if (Array.isArray(r) && r.length > 0) {
+            // Supabase confirmó — quitar del buffer
+            delete _pending[String(socio.id)];
+            bump();
+          } else if (r === null || (Array.isArray(r) && r.length === 0)) {
+            // Red caída o sin respuesta — mantener en _pending
+            console.warn('[GymDB] setSocio: sin respuesta de Supabase, socio en buffer');
+          } else {
+            // r es un objeto de error de Supabase (4xx)
+            console.error('[GymDB] setSocio error Supabase:', JSON.stringify(r));
+            // Mantener en _pending para que el socio no desaparezca localmente
+            // pero intentar de nuevo en el próximo bump
+          }
         });
         return; // no bumpar todavía
       }
