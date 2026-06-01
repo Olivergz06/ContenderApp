@@ -187,9 +187,9 @@ var GymDB = (function () {
     },
 
     setSocio: function(socio) {
-      var self = this;
-      var idx  = findIdx(C.socios, socio.id);
-      var abonos = (socio.abonos || []).slice();
+      var self  = this;
+      var idx   = findIdx(C.socios, socio.id);
+      var abonos= (socio.abonos || []).slice();
       function nd(v){ return (v===''||v===undefined)?null:v; }
       var data = {
         id:String(socio.id), nombre:socio.nombre, apellido_paterno:socio.apellido_paterno,
@@ -204,30 +204,25 @@ var GymDB = (function () {
         avisos_ids:JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
       };
       if (idx > -1) {
-        // Edición: actualizar socio
         C.socios[idx] = socio;
-        pat('socios', 'id=eq.'+socio.id, data);
-        // Si cambió el teléfono, actualizar la cuenta
+        pat('socios','id=eq.'+socio.id, data);
+        // Actualizar teléfono en cuenta si cambió
         if (nd(socio.numero)) {
-          var ci = findIdx(C.cuentas, String(socio.id));
-          if (ci > -1 && C.cuentas[ci].telefono !== socio.numero) {
-            C.cuentas[ci].telefono = socio.numero;
+          var ci=findIdx(C.cuentas, String(socio.id));
+          if (ci>-1 && C.cuentas[ci].telefono!==socio.numero) {
+            C.cuentas[ci].telefono=socio.numero;
             pat('cuentas','id=eq.'+C.cuentas[ci].id,{telefono:socio.numero});
           }
         }
         bump();
       } else {
-        // Socio nuevo
         _pending[String(socio.id)] = socio;
         C.socios.push(socio);
         post('socios', data).then(function(r){
           if(r&&!r._error&&Array.isArray(r)&&r.length>0){
             delete _pending[String(socio.id)];
-            // Crear cuenta SOLO si tiene teléfono
-            // Teléfono = llave de seguridad, código = número de socio
-            if (nd(socio.numero)) {
-              self.crearCuenta(String(socio.id), socio.numero);
-            }
+            // Crear cuenta solo si tiene teléfono
+            if (nd(socio.numero)) self.crearCuenta(String(socio.id), socio.numero);
             bump();
           }
         });
@@ -260,18 +255,16 @@ var GymDB = (function () {
       return null;
     },
 
-    // Crea cuenta de acceso para socio.html
-    // Teléfono = verificación de identidad, código = número de socio
     crearCuenta: function(socioId, telefono) {
       var codigo = String(socioId);
       var existe = C.cuentas.some(function(c){
-        return c.socios && c.socios.indexOf(socioId) > -1;
+        return c.socios && c.socios.indexOf(socioId)>-1;
       });
       if (existe) return;
-      var cuenta = { telefono:telefono, codigo:codigo, socios:[socioId] };
+      var cuenta = {telefono:telefono, codigo:codigo, socios:[socioId]};
       C.cuentas.push(cuenta);
       post('cuentas', cuenta).then(function(r){
-        if(r&&!r._error&&Array.isArray(r)&&r[0]) cuenta.id = r[0].id;
+        if(r&&!r._error&&Array.isArray(r)&&r[0]) cuenta.id=r[0].id;
       });
     },
 
@@ -475,12 +468,14 @@ var GymDB = (function () {
     next.forEach(function(item) {
       var body = {};
       fields.forEach(function(f){ var v=item[f]; body[f]=(v===''||v===undefined)?null:v; });
-      var sid=item.id?String(item.id):null, enSupabase=sid&&prevMap[sid];
-      if (enSupabase) {
+      var sid=item.id?String(item.id):null, enSB=sid&&prevMap[sid];
+      if (enSB) {
         var cambio=fields.some(function(f){return JSON.stringify(item[f])!==JSON.stringify(prevMap[sid][f]);});
         if(cambio) pat(table,'id=eq.'+item.id,body);
       } else {
-        post(table,body).then(function(r){ if(r&&!r._error&&Array.isArray(r)&&r[0]) item.id=r[0].id; });
+        post(table,body).then(function(r){
+          if(r&&!r._error&&Array.isArray(r)&&r[0]) item.id=r[0].id;
+        });
       }
     });
     var nextIds=next.filter(function(n){return n.id&&prevMap[String(n.id)];}).map(function(n){return String(n.id);});
