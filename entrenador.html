@@ -7,6 +7,7 @@
 <title>Contender · Entrenador</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="supabasedb.js"></script>
+<script src="socios-shared.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#080808;color:#F0EDE8;font-family:"DM Sans",sans-serif;max-width:430px;margin:0 auto;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -204,46 +205,8 @@ textarea{resize:vertical;min-height:70px;}
     <div><h1 id="form-titulo">Nuevo Socio</h1></div>
     <div class="hdr-r"><button class="btn bd bsm" id="btn-form-cancel">Cancelar</button></div>
   </div>
-  <div class="sec" style="padding-bottom:20px">
-    <div class="f2">
-      <div class="fr"><label>Núm. Socio <span style="color:var(--lime);font-size:10px">(auto)</span></label><input type="text" id="f-id" readonly style="color:var(--muted);background:var(--bg3)"></div>
-      <div class="fr"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
-    </div>
-    <div class="f2">
-      <div class="fr"><label>Ap. Paterno</label><input type="text" id="f-ap" placeholder="Apellido P."></div>
-      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Apellido M."></div>
-    </div>
-    <div class="f2">
-      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="55 1234 5678" inputmode="numeric"></div>
-      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
-    </div>
-    <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
-    <div class="f2">
-      <div class="fr"><label>Plan</label>
-        <select id="f-plan">
-          <option value="">— Selecciona —</option>
-          <option value="Mensual">Mensual</option>
-          <option value="Trimestral">Trimestral</option>
-          <option value="Semestral">Semestral</option>
-          <option value="Anual">Anual</option>
-        </select>
-      </div>
-      <div class="fr"><label>Vencimiento</label><input type="date" id="f-vence"></div>
-    </div>
-    <div class="fr"><label>Fecha de alta</label><input type="date" id="f-inicio"></div>
-    <div class="f2">
-      <div class="fr"><label>Nacimiento</label><input type="date" id="f-nac"></div>
-      <div class="fr"><label>Sexo</label>
-        <select id="f-sexo">
-          <option value="">—</option>
-          <option value="M">Masculino</option>
-          <option value="F">Femenino</option>
-          <option value="O">Otro</option>
-        </select>
-      </div>
-    </div>
-    <div class="fr"><label>Notas</label><textarea id="f-notas" placeholder="Lesiones, observaciones…"></textarea></div>
-    <button class="btn bl bfull" id="btn-guardar-socio">Guardar</button>
+  <div class="sec" style="padding-bottom:20px" id="form-socio-body">
+    <!-- Llenado por SociosModule.htmlForm() -->
   </div>
   <div class="nav-ph"></div>
 </div>
@@ -624,33 +587,26 @@ function confirmarCheckin(){
   ge("modal-checkin").classList.remove("open");
   renderInicio();
 }
-function guardarSocio(){
-  var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  if(!nombre||!ap){ alert("Nombre y apellido son requeridos"); return; }
-  if(!id){ alert("Error: número de socio vacío. Cierra y vuelve a abrir el formulario."); return; }
-
-  // Calcular vencimiento si no está puesto
-  var fi=ge("f-inicio").value, plan=ge("f-plan").value, vence=ge("f-vence").value;
-  if(fi && plan && !vence && PLAN_DIAS[plan]){
-    var dt=new Date(fi+"T00:00:00"); dt.setDate(dt.getDate()+PLAN_DIAS[plan]);
-    vence=dt.toISOString().slice(0,10);
-  }
-
-  var prev=SOCIOS.find(function(x){return x.id===id;})||{};
+function guardarSocio(){ SociosModule.guardar(); }
+function _guardarSocioOLD_SKIP(){
+  var id="", nombre="", ap="";
+  if(!id||!nombre||!ap){return;}
   var datos={
     id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
     numero:ge("f-tel").value.trim(), numero_emergencia:ge("f-emerg").value.trim(),
     correo:ge("f-correo").value.trim(), notas:ge("f-notas").value.trim(),
-    fecha_vencimiento:vence, fecha_inicio:fi,
-    fecha_nacimiento:ge("f-nac").value, plan:plan, sexo:ge("f-sexo").value,
-    visitas: prev.visitas||0,
-    activo:  prev.activo!==undefined ? prev.activo : true,
-    abonos:  prev.abonos||[]
+    fecha_vencimiento:ge("f-vence").value, fecha_inicio:ge("f-inicio").value,
+    fecha_nacimiento:ge("f-nac").value, plan:ge("f-plan").value,
+    sexo:ge("f-sexo").value, visitas:0, activo:true, abonos:[]
   };
-  // setSocio escribe a Supabase y espera confirmación antes de notificar otros tabs
-  GymDB.setSocio(datos);
-  SOCIOS=GymDB.getSocios();
-  mostrarToast("✓ Socio guardado");
+  var idx=SOCIOS.findIndex(function(x){return x.id===id;});
+  if(idx>-1){
+    datos.visitas=SOCIOS[idx].visitas; datos.activo=SOCIOS[idx].activo; datos.abonos=SOCIOS[idx].abonos||[];
+    SOCIOS[idx]=datos;
+  } else {
+    SOCIOS.push(datos);
+  }
+  GymDB.saveSocios(SOCIOS);
   showScreen("socios");
 }
 
@@ -665,7 +621,8 @@ function renderDetalle(){
 }
 
 // ── TAB: MEMBRESÍA Y DEUDAS ───────────────────────────────────
-function renderMembresia(s){
+function renderMembresia(s){ SociosModule.renderMembresia(s, ge("det-content")); }
+function _renderMembresiaOLD_SKIP(s){
   var st    =calcStatus(s);
   var abonos=s.abonos||[];
   var deudas=DEUDAS[s.id]||[];
@@ -799,8 +756,9 @@ function renderMembresia(s){
   });
 }
 
-// ── TAB: INFORMACIÓN GENERAL ──────────────────────────────────
-function renderInfoGeneral(s){
+// ── TAB: INFORMACIÓN GENERAL (delegada al módulo) ────────────
+function renderInfoGeneral(s){ SociosModule.renderInfoGeneral(s, ge("det-content")); }
+function _renderInfoGeneralOLD_SKIP(s_unused){
   var html="<div class='sec' style='padding-bottom:16px'>";
   html+="<div class='f2' style='margin-bottom:12px'>";
   html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Teléfono</div><div style='font-size:14px'>"+( s.numero||"—")+"</div></div>";
@@ -944,6 +902,29 @@ document.addEventListener("DOMContentLoaded",function(){
   _gymdbReady.then(function(){
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
+    // Inicializar módulo compartido
+    SociosModule.init({
+      role:         'trainer',
+      getVendedor:  function(){ return window.TRAINER_ACTIVO||{id:'trainer',nombre:'Trainer'}; },
+      requirePin:   true,
+      pedirPin:     pedirPin,
+      getSocios:    function(){ return SOCIOS; },
+      getDeudas:    function(){ return DEUDAS; },
+      getPlanDias:  function(){ return PLAN_DIAS; },
+      getPlanPrecio:function(){ return PLAN_PRECIO; },
+      getPlanAbonos:function(){ return PLAN_ABONOS||{}; },
+      getAvisos:    function(){ return AVISOS||[]; },
+      calcStatus:   calcStatus,
+      showScreen:   showScreen,
+      renderDetalle:renderDetalle,
+      mostrarToast: mostrarToast,
+      abrirWA:      abrirWA,
+      onSave: function(){ SOCIOS=GymDB.getSocios(); renderSocios(); }
+    });
+    var fb=document.getElementById('form-socio-body');
+    if(fb) fb.innerHTML=SociosModule.htmlForm();
+    // Guardar TRAINER_ACTIVO al hacer login
+    window.TRAINER_ACTIVO = null;
     recargarDatos();
 
   // Check-in
@@ -976,20 +957,7 @@ document.addEventListener("DOMContentLoaded",function(){
   // Sort y búsqueda
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("soc-buscar").addEventListener("input",renderSocios);
-  ge("btn-nuevo-socio").addEventListener("click",function(){
-    socioActual=null;
-    ge("form-titulo").textContent="Nuevo Socio";
-    // Limpiar campos
-    ["f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
-    ge("f-vence").value=""; ge("f-nac").value=""; ge("f-plan").value=""; ge("f-sexo").value="";
-    // ID auto-generado (consecutivo)
-    var max=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0);
-    var n=max+1;
-    ge("f-id").value=n<10?"00"+n:n<100?"0"+n:String(n);
-    // Fecha de registro = hoy
-    ge("f-inicio").value=new Date().toISOString().slice(0,10);
-    showScreen("form");
-  });
+  ge("btn-nuevo-socio").addEventListener("click",function(){ SociosModule.abrirNuevo(); });
   ge("btn-orden-dir").addEventListener("click",function(){
     ordenAsc=!ordenAsc;
     this.textContent=ordenAsc?"↑":"↓";
@@ -1006,15 +974,7 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 
   ge("btn-form-cancel").addEventListener("click",function(){ showScreen("socios"); });
-  ge("btn-guardar-socio").addEventListener("click", guardarSocio);
-  // Calcular vencimiento automáticamente al elegir plan
-  ge("f-plan").addEventListener("change",function(){
-    var fi=ge("f-inicio").value, plan=this.value;
-    if(fi && plan && PLAN_DIAS[plan]){
-      var dt=new Date(fi+"T00:00:00"); dt.setDate(dt.getDate()+PLAN_DIAS[plan]);
-      ge("f-vence").value=dt.toISOString().slice(0,10);
-    }
-  });
+  ge("btn-guardar-socio-shared") && ge("btn-guardar-socio-shared").addEventListener("click", guardarSocio);
   ge("btn-det-back").addEventListener("click",function(){ showScreen("socios"); });
 
   // Modal pago
