@@ -28,8 +28,7 @@ var GymDB = (function () {
     rutinas:   {},   // { socio_id: [{dia,grupo,icono,ejercicios:[]},...] }
     historico: { ventas:[], checkins:[], socios:[] },
     trainers:  [],
-    cuentas:   [],
-    avisos:    []
+    cuentas:   []
   };
 
   // ── HTTP helpers ───────────────────────────────────────────────
@@ -88,18 +87,14 @@ var GymDB = (function () {
       get('trainers',  'select=*'),
       get('cuentas',   'select=*'),
       get('historico', 'select=*&order=id.asc'),
-      get('rutinas',    'select=*,ejercicios(*)&order=dia.asc'),
-      get('avisos_cat', 'select=*&order=id.asc')
+      get('rutinas',   'select=*,ejercicios(*)&order=dia.asc')
     ]).then(function(res) {
 
       // Socios con abonos embebidos
       C.socios = (res[0]||[]).map(function(s) {
         s.abonos = (s.abonos||[]).sort(function(a,b){ return a.numero-b.numero; });
+        // ids de abonos como string para comparaciones consistentes
         s.abonos.forEach(function(a){ a.id = String(a.id); });
-        if (typeof s.avisos_ids === 'string') {
-          try { s.avisos_ids = JSON.parse(s.avisos_ids); } catch(e) { s.avisos_ids = []; }
-        }
-        if (!Array.isArray(s.avisos_ids)) s.avisos_ids = [];
         return s;
       });
 
@@ -131,12 +126,14 @@ var GymDB = (function () {
       C.trainers = res[9]  || [];
       C.cuentas  = res[10] || [];
 
+      // Historico → { ventas:[], checkins:[], socios:[] }
       var hist = { ventas:[], checkins:[], socios:[] };
       (res[11]||[]).forEach(function(h) {
         if (hist[h.tipo]) hist[h.tipo].push({ m:h.mes, v:h.valor });
       });
       C.historico = hist;
 
+      // Rutinas → { socio_id: [{dia,grupo,icono,ejercicios:[]}] }
       C.rutinas = {};
       (res[12]||[]).forEach(function(r) {
         if (!C.rutinas[r.socio_id]) C.rutinas[r.socio_id] = [];
@@ -144,15 +141,13 @@ var GymDB = (function () {
           dia:       r.dia,
           grupo:     r.grupo,
           icono:     r.icono,
-          _id:       r.id,
+          _id:       r.id,   // id interno Supabase
           ejercicios:(r.ejercicios||[]).map(function(e){
             return { id:e.id, nombre:e.nombre, series:e.series,
                      notas:e.notas, manual:e.manual };
           })
         });
       });
-
-      C.avisos = res[13] || [];
 
     });
   }
@@ -181,26 +176,35 @@ var GymDB = (function () {
       var abonos = (socio.abonos || []).slice();
       var data   = {};
       Object.keys(socio).forEach(function(k){ if(k!=='abonos') data[k]=socio[k]; });
-      if (Array.isArray(data.avisos_ids)) data.avisos_ids = JSON.stringify(data.avisos_ids);
 
       if (idx > -1) {
         C.socios[idx] = socio;
         pat('socios', 'id=eq.'+socio.id, data);
+        bump(); // PATCH es inmediato, puede bumpar ya
       } else {
         C.socios.push(socio);
-        post('socios', data);
+        // Esperar a que Supabase confirme antes de notificar a otros tabs
+        post('socios', data).then(function(r) {
+          if (r && r[0] && r[0].id) {
+            // Supabase confirmó — ahora sí notificar
+            bump();
+          } else {
+            console.warn('[GymDB] POST socio sin respuesta confirmada', r);
+            bump(); // bumpar de todas formas para no bloquear
+          }
+        });
+        return; // salir sin bump prematuro
       }
 
+      // Sincronizar abonos
       abonos.forEach(function(a) {
+        var aData = { socio_id:socio.id, numero:a.numero, monto:a.monto,
+                      fecha_limite:a.fecha_limite, pagado:a.pagado, fecha_pago:a.fecha_pago||null };
         if (a.id && !isNaN(Number(a.id))) {
-          var patch = { pagado:a.pagado, fecha_pago:a.fecha_pago||null };
-          if (a.vendedor_id)     patch.vendedor_id     = a.vendedor_id;
-          if (a.vendedor_nombre) patch.vendedor_nombre = a.vendedor_nombre;
-          pat('abonos', 'id=eq.'+a.id, patch);
+          // Existente → PATCH
+          pat('abonos', 'id=eq.'+a.id, { pagado:a.pagado, fecha_pago:a.fecha_pago||null });
         } else {
-          var aData = { socio_id:socio.id, numero:a.numero||a.num, monto:a.monto,
-                        fecha_limite:a.fecha_limite, pagado:a.pagado, fecha_pago:a.fecha_pago||null,
-                        vendedor_id:a.vendedor_id||null, vendedor_nombre:a.vendedor_nombre||null };
+          // Nuevo → POST
           post('abonos', aData).then(function(r){
             if(r&&r[0]) a.id = String(r[0].id);
           });
@@ -281,11 +285,11 @@ var GymDB = (function () {
       var hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
       arr.push({ socio_id:sid, hora:hora, fecha:hoy() });
       C.checkins[hoy()] = arr;
+      // Incrementar visitas en cache
       var si = findIdx(C.socios, sid);
       if (si>-1) {
-        C.socios[si].visitas       = (C.socios[si].visitas||0)+1;
-        C.socios[si].ultima_visita = hoy();
-        pat('socios','id=eq.'+sid,{ visitas:C.socios[si].visitas, ultima_visita:hoy() });
+        C.socios[si].visitas = (C.socios[si].visitas||0)+1;
+        pat('socios','id=eq.'+sid,{ visitas:C.socios[si].visitas });
       }
       post('checkins',{ socio_id:sid, hora:hora, fecha:hoy() });
       bump();
@@ -338,13 +342,6 @@ var GymDB = (function () {
     saveMensajes: function(arr) {
       _syncCat('mensajes_wa', C.mensajes, arr, ['nombre','cuerpo']);
       C.mensajes = arr;
-      bump();
-    },
-
-    getAvisos: function()    { return C.avisos; },
-    saveAvisos: function(arr) {
-      _syncCat('avisos_cat', C.avisos, arr, ['nombre','tipo','dias','emoji','mensaje']);
-      C.avisos = arr;
       bump();
     },
 
