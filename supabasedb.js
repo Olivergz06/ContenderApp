@@ -50,7 +50,7 @@ var GymDB = (function () {
       .then(function(r) {
         if (r.status === 204) return [];
         return r.json().then(function(json) {
-          if (!r.ok) console.error('[GymDB]', method, table, r.status, json);
+          if (!r.ok) console.error('[GymDB]', method, table, r.status, JSON.stringify(json));
           return json;
         });
       })
@@ -62,9 +62,6 @@ var GymDB = (function () {
   var pat  = function(t,q,b) { return sbFetch('PATCH', t, q, b); };
   var del  = function(t,q)   { return sbFetch('DELETE',t, q); };
 
-  // Convierte string vacío a null (evita errores 400 en columnas date de Supabase)
-  function nullIfEmpty(v) { return (v === '' || v === undefined || v === null) ? null : v; }
-
   // ── Utilidades ─────────────────────────────────────────────────
   function hoy() { return new Date().toISOString().slice(0,10); }
 
@@ -73,8 +70,7 @@ var GymDB = (function () {
     return -1;
   }
 
-  // Socios recién creados que aún no confirmó Supabase
-  // loadAll() los reinyecta para que el sync no los borre
+  // Socios nuevos pendientes de confirmación de Supabase
   var _pending = {};
 
   // Notifica a otros tabs que hubo un cambio
@@ -102,19 +98,19 @@ var GymDB = (function () {
 
       // Socios con abonos embebidos
       C.socios = (res[0]||[]).map(function(s) {
-        s.id = String(s.id); // normalizar a string siempre
+        s.id = String(s.id);
         s.abonos = (s.abonos||[]).sort(function(a,b){ return a.numero-b.numero; });
         s.abonos.forEach(function(a){ a.id = String(a.id); });
+        if (typeof s.avisos_ids === 'string') {
+          try { s.avisos_ids = JSON.parse(s.avisos_ids); } catch(e) { s.avisos_ids = []; }
+        }
+        if (!Array.isArray(s.avisos_ids)) s.avisos_ids = [];
         return s;
       });
-
-      // Reinyectar socios pendientes (POST en vuelo que Supabase aún no confirmó)
+      // Reinyectar socios en vuelo
       Object.keys(_pending).forEach(function(id) {
-        if (findIdx(C.socios, id) === -1) {
-          C.socios.push(_pending[id]);
-        } else {
-          delete _pending[id]; // ya está en Supabase, limpiar buffer
-        }
+        if (findIdx(C.socios, id) === -1) C.socios.push(_pending[id]);
+        else delete _pending[id];
       });
 
       // Deudas → { socio_id: [deudas] }
@@ -193,35 +189,51 @@ var GymDB = (function () {
     setSocio: function(socio) {
       var idx    = findIdx(C.socios, socio.id);
       var abonos = (socio.abonos || []).slice();
-      var data   = {};
-      Object.keys(socio).forEach(function(k){
-        if (k === 'abonos') return;
-        var v = socio[k];
-        // Fechas vacías → null para evitar error 400 en Supabase
-        if (k === 'fecha_vencimiento' || k === 'fecha_inicio' ||
-            k === 'fecha_nacimiento'  || k === 'fecha_pago') {
-          data[k] = nullIfEmpty(v);
-        } else {
-          data[k] = v;
-        }
-      });
+
+      // Solo mandar columnas que existen en el schema de Supabase
+      // Nunca mandar strings vacíos en campos date (causa error 400)
+      function nd(v){ return (v===''||v===undefined||v===null)?null:v; }
+      var data = {
+        id:               socio.id,
+        nombre:           socio.nombre,
+        apellido_paterno: socio.apellido_paterno,
+        apellido_materno: nd(socio.apellido_materno),
+        numero:           nd(socio.numero),
+        correo:           nd(socio.correo),
+        numero_emergencia:nd(socio.numero_emergencia),
+        plan:             nd(socio.plan),
+        fecha_inicio:     nd(socio.fecha_inicio),
+        fecha_vencimiento:nd(socio.fecha_vencimiento),
+        fecha_nacimiento: nd(socio.fecha_nacimiento),
+        visitas:          socio.visitas||0,
+        activo:           socio.activo!==false,
+        sexo:             nd(socio.sexo),
+        notas:            nd(socio.notas),
+        color:            socio.color||'#C8F135',
+        vendedor_id:      nd(socio.vendedor_id),
+        vendedor_nombre:  nd(socio.vendedor_nombre),
+        ultima_visita:    nd(socio.ultima_visita),
+        avisos_ids:       JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
+      };
 
       if (idx > -1) {
         C.socios[idx] = socio;
         pat('socios', 'id=eq.'+socio.id, data);
         bump();
       } else {
-        // Nuevo: registrar en buffer antes del POST
         _pending[String(socio.id)] = socio;
         C.socios.push(socio);
         post('socios', data).then(function(r) {
           if (Array.isArray(r) && r.length > 0) {
-            // Confirmado por Supabase → limpiar buffer y notificar
             delete _pending[String(socio.id)];
             bump();
           } else {
-            // Falló (error 4xx o red) → dejar en buffer para que loadAll reinyecte
-            console.error('[GymDB] setSocio no confirmado:', r);
+            // Mostrar error visible para diagnóstico
+            var msg = Array.isArray(r) ? 'sin respuesta' : JSON.stringify(r);
+            console.error('[GymDB] setSocio falló:', msg);
+            if (window.mostrarToast) {
+              window.mostrarToast('⚠ Error al guardar socio: '+msg.slice(0,60));
+            }
           }
         });
         return;
@@ -432,16 +444,16 @@ var GymDB = (function () {
 
     // ── SINCRONIZACIÓN CROSS-TAB / CROSS-DEVICE ─────────────────
     onChange: function(callback) {
-      // Mismo navegador, tabs distintos → via localStorage (inmediato)
+      // Mismo navegador, tabs distintos → via localStorage
       window.addEventListener('storage', function(e) {
         if (e.key === 'gymdb_sb_v') {
           loadAll().then(function(){ setTimeout(callback, 80); });
         }
       });
-      // Distintos dispositivos → polling cada 10s
+      // Polling cada 60s para distintos dispositivos
       setInterval(function(){
         loadAll().then(callback);
-      }, 10000);
+      }, 60000);
     }
 
   }; // fin return
