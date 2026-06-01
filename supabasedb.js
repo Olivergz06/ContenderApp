@@ -76,6 +76,7 @@ var GymDB = (function () {
     return -1;
   }
   function deepCopy(arr){ return JSON.parse(JSON.stringify(arr||[])); }
+  function deepCopyObj(obj){ return JSON.parse(JSON.stringify(obj||{})); }
   var _pending = {};
 
   // Notifica a otros tabs que hubo un cambio
@@ -206,7 +207,6 @@ var GymDB = (function () {
       if (idx > -1) {
         C.socios[idx] = socio;
         pat('socios','id=eq.'+socio.id, data);
-        // Actualizar teléfono en cuenta si cambió
         if (nd(socio.numero)) {
           var ci=findIdx(C.cuentas, String(socio.id));
           if (ci>-1 && C.cuentas[ci].telefono!==socio.numero) {
@@ -221,7 +221,6 @@ var GymDB = (function () {
         post('socios', data).then(function(r){
           if(r&&!r._error&&Array.isArray(r)&&r.length>0){
             delete _pending[String(socio.id)];
-            // Crear cuenta solo si tiene teléfono
             if (nd(socio.numero)) self.crearCuenta(String(socio.id), socio.numero);
             bump();
           }
@@ -256,12 +255,10 @@ var GymDB = (function () {
     },
 
     crearCuenta: function(socioId, telefono) {
-      var codigo = String(socioId);
-      var existe = C.cuentas.some(function(c){
-        return c.socios && c.socios.indexOf(socioId)>-1;
-      });
-      if (existe) return;
-      var cuenta = {telefono:telefono, codigo:codigo, socios:[socioId]};
+      var codigo=String(socioId);
+      var existe=C.cuentas.some(function(c){ return c.socios&&c.socios.indexOf(socioId)>-1; });
+      if(existe) return;
+      var cuenta={telefono:telefono, codigo:codigo, socios:[socioId]};
       C.cuentas.push(cuenta);
       post('cuentas', cuenta).then(function(r){
         if(r&&!r._error&&Array.isArray(r)&&r[0]) cuenta.id=r[0].id;
@@ -269,7 +266,7 @@ var GymDB = (function () {
     },
 
     // ── DEUDAS ──────────────────────────────────────────────────
-    getAllDeudas:   function()    { return C.deudas; },
+    getAllDeudas:   function()    { return deepCopyObj(C.deudas); },
     getDeudas:      function(sid) { return C.deudas[sid] || []; },
 
     saveAllDeudas: function(obj) {
@@ -463,13 +460,13 @@ var GymDB = (function () {
 
   // ── Helper: sync de tablas de catálogo ─────────────────────────
   function _syncCat(table, prev, next, fields) {
-    var prevMap = {};
+    var prevMap={};
     prev.forEach(function(p){ if(p.id) prevMap[String(p.id)]=p; });
     next.forEach(function(item) {
-      var body = {};
+      var body={};
       fields.forEach(function(f){ var v=item[f]; body[f]=(v===''||v===undefined)?null:v; });
       var sid=item.id?String(item.id):null, enSB=sid&&prevMap[sid];
-      if (enSB) {
+      if(enSB){
         var cambio=fields.some(function(f){return JSON.stringify(item[f])!==JSON.stringify(prevMap[sid][f]);});
         if(cambio) pat(table,'id=eq.'+item.id,body);
       } else {

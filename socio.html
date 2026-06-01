@@ -573,12 +573,11 @@ document.querySelectorAll('.nav-item').forEach(function(btn){
 document.addEventListener('DOMContentLoaded', function(){
   // Esperar que Supabase cargue
   _gymdbReady.then(function(){
-    // Sin perfiles precargados — cada dispositivo empieza limpio
-    renderPerfiles();
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
     CLASES   = GymDB.getClases();
     INSCRITOS= GymDB.getAllInscritos();
+    renderPerfiles();
   }).catch(function(e){
     var ov=document.getElementById('ov-loading');
     var errEl=document.getElementById('ov-err');
@@ -975,11 +974,12 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
+    // Siempre actualizar clases e inscritos (para que admin->socio se refleje)
+    CLASES   = GymDB.getClases();
+    INSCRITOS= GymDB.getAllInscritos();
     if(!SOCIO) return; // no logueado aún
     // Recargar datos frescos
     DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
-    CLASES            = GymDB.getClases();
-    INSCRITOS         = GymDB.getAllInscritos();
     // Actualizar el perfil del socio activo
     var socFresh = GymDB.getSocio(SOCIO.id);
     if(socFresh) SOCIO = socioToPerfile(socFresh);
