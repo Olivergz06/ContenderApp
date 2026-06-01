@@ -244,7 +244,7 @@ textarea{resize:vertical;min-height:70px;}
     </div>
     <div class="f2">
       <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Ap. M."></div>
-      <div class="fr"><label>Teléfono *</label><input type="tel" id="f-tel" placeholder="5512345678" inputmode="numeric"></div>
+      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="5512345678" inputmode="numeric"></div>
     </div>
     <div class="f2">
       <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="5500000000" inputmode="numeric"></div>
@@ -569,7 +569,7 @@ function showScreen(id){
     b.classList.toggle("active",b.dataset.screen===id);
   });
   if(id==="inicio")   renderInicio();
-  if(id==="socios")   { GymDB.init().then(function(){ recargarDatos(); renderSocios(); }); renderSocios(); }
+  if(id==="socios")   { renderSocios(); GymDB.init().then(function(){ recargarDatos(); renderSocios(); }); }
   if(id==="catalogo") renderCatalogo();
   if(id==="reportes") renderReporte();
   if(id==="dashboard")renderGrafica();
@@ -806,18 +806,22 @@ function renderTabInfo(s){
 // ── FORMULARIO SOCIO ──────────────────────────────────────────
 var socEditId=null;
 
-function _nextId(){
+function _calcVenc(){
+  var fi=ge("f-inicio").value, plan=ge("f-plan").value;
+  if(fi && PLAN_DIAS[plan]){
+    ge("f-vence").value=addDays(fi,PLAN_DIAS[plan]);
+    ge("f-vence").style.color="var(--lime)";
+  }
+}
+function _nextSocioId(){
   if(!SOCIOS.length) return "001";
   var max=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0);
   var n=max+1; return n<10?"00"+n:n<100?"0"+n:String(n);
 }
-function _calcVenc(){
-  var fi=ge("f-inicio").value,plan=ge("f-plan").value;
-  if(fi&&PLAN_DIAS[plan]){ge("f-vence").value=addDays(fi,PLAN_DIAS[plan]);ge("f-vence").style.color="var(--lime)";}
-}
 function abrirNuevoSoc(){
-  socEditId=null; ge("form-titulo").textContent="Nuevo Socio";
-  var nid=_nextId();
+  socEditId=null;
+  ge("form-titulo").textContent="Nuevo Socio";
+  var nid=_nextSocioId();
   ge("f-id").value=nid; ge("f-id-hint").textContent="auto";
   ge("f-inicio").value=new Date().toISOString().slice(0,10);
   ["f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
@@ -839,20 +843,24 @@ function abrirEditarSoc(id){
   showScreen("form");
 }
 function guardarSoc(){
-  var id=ge("f-id").value.trim(),nombre=ge("f-nombre").value.trim(),ap=ge("f-ap").value.trim();
-  var tel=ge("f-tel").value.trim();
-  if(!nombre||!ap){alert("Nombre y apellido son requeridos");return;}
-  if(!tel){alert("El teléfono es requerido");return;}
-  if(!id){alert("Error: sin número de socio");return;}
-  var fi=ge("f-inicio").value,plan=ge("f-plan").value,vence=ge("f-vence").value;
+  var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
+  if(!nombre||!ap){ alert("Nombre y apellido son requeridos"); return; }
+  if(!id){ alert("Error: sin número de socio"); return; }
+  var fi=ge("f-inicio").value, plan=ge("f-plan").value, vence=ge("f-vence").value;
   if(fi&&plan&&!vence&&PLAN_DIAS[plan]) vence=addDays(fi,PLAN_DIAS[plan]);
   var prev=SOCIOS.find(function(x){return x.id===id;})||{};
-  var datos={id:id,nombre:nombre,apellido_paterno:ap,apellido_materno:ge("f-am").value.trim(),
-    numero:tel,numero_emergencia:ge("f-emerg").value.trim(),correo:ge("f-correo").value.trim(),
-    notas:ge("f-notas").value.trim(),fecha_vencimiento:vence||null,fecha_inicio:fi||null,
-    fecha_nacimiento:ge("f-nac").value||null,plan:plan,sexo:ge("f-sexo").value,
-    visitas:prev.visitas||0,activo:prev.activo!==undefined?prev.activo:true,
-    abonos:prev.abonos||[],color:prev.color||"#C8F135"};
+  var datos={
+    id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
+    numero:ge("f-tel").value.trim()||null,
+    numero_emergencia:ge("f-emerg").value.trim()||null,
+    correo:ge("f-correo").value.trim()||null,
+    notas:ge("f-notas").value.trim()||null,
+    fecha_vencimiento:vence||null, fecha_inicio:fi||null,
+    fecha_nacimiento:ge("f-nac").value||null,
+    plan:plan||null, sexo:ge("f-sexo").value||null,
+    visitas:prev.visitas||0, activo:prev.activo!==undefined?prev.activo:true,
+    abonos:prev.abonos||[], color:prev.color||"#C8F135"
+  };
   GymDB.setSocio(datos);
   SOCIOS=GymDB.getSocios();
   if(socioActual&&socioActual.id===id) socioActual=datos;
@@ -1240,6 +1248,8 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("btn-det-back").addEventListener("click",function(){showScreen("socios");});
   ge("btn-form-cancel").addEventListener("click",function(){showScreen("socios");});
   ge("btn-guardar-soc").addEventListener("click",guardarSoc);
+  ge("f-plan").addEventListener("change",_calcVenc);
+  ge("f-inicio").addEventListener("change",_calcVenc);
   document.querySelectorAll(".tab[data-det]").forEach(function(b){b.addEventListener("click",function(){detTab=this.dataset.det;document.querySelectorAll(".tab[data-det]").forEach(function(x){x.classList.toggle("active",x.dataset.det===detTab);});renderDetalle();});});
 
   // Catálogo
