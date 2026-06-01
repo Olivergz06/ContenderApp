@@ -51,15 +51,15 @@ var GymDB = (function () {
         if (r.status === 204) return [];
         return r.json().then(function(json){
           if (!r.ok) {
-            var msg = (json&&json.message) ? json.message : JSON.stringify(json);
-            console.error('[GymDB]', method, table, r.status, msg);
-            if (typeof mostrarToast==='function') mostrarToast('⚠ DB '+r.status+': '+msg.slice(0,80));
-            return {_error:true, status:r.status, message:msg};
+            var msg=(json&&json.message)?json.message:JSON.stringify(json);
+            console.error('[GymDB]',method,table,r.status,msg);
+            if(typeof mostrarToast==='function') mostrarToast('⚠ DB '+r.status+': '+msg.slice(0,80));
+            return {_error:true,status:r.status,message:msg};
           }
           return json;
         });
       })
-      .catch(function(e) { console.error('[GymDB]', method, table, e); return null; });
+      .catch(function(e){ console.error('[GymDB]',method,table,e); return null; });
   }
 
   var get  = function(t,q)   { return sbFetch('GET',   t, q); };
@@ -75,8 +75,6 @@ var GymDB = (function () {
     for (var i=0; i<arr.length; i++) if (String(arr[i].id)===sid) return i;
     return -1;
   }
-
-  // Buffer de socios en vuelo (POST enviado, Supabase aún no confirmó)
   var _pending = {};
 
   // Notifica a otros tabs que hubo un cambio
@@ -109,9 +107,8 @@ var GymDB = (function () {
         s.abonos.forEach(function(a){ a.id = String(a.id); });
         return s;
       });
-      // Reinyectar socios pendientes que Supabase aún no confirmó
       Object.keys(_pending).forEach(function(pid){
-        if (findIdx(C.socios,pid)===-1) C.socios.push(_pending[pid]);
+        if(findIdx(C.socios,pid)===-1) C.socios.push(_pending[pid]);
         else delete _pending[pid];
       });
 
@@ -191,49 +188,30 @@ var GymDB = (function () {
     setSocio: function(socio) {
       var idx    = findIdx(C.socios, socio.id);
       var abonos = (socio.abonos || []).slice();
-
-      // Solo columnas que existen en la tabla — nunca mandar campos desconocidos
       function nd(v){ return (v===''||v===undefined)?null:v; }
       var data = {
-        id:                String(socio.id),
-        nombre:            socio.nombre,
-        apellido_paterno:  socio.apellido_paterno,
-        apellido_materno:  nd(socio.apellido_materno),
-        numero:            nd(socio.numero),
-        correo:            nd(socio.correo),
-        numero_emergencia: nd(socio.numero_emergencia),
-        plan:              nd(socio.plan),
-        fecha_inicio:      nd(socio.fecha_inicio),
-        fecha_vencimiento: nd(socio.fecha_vencimiento),
-        fecha_nacimiento:  nd(socio.fecha_nacimiento),
-        visitas:           socio.visitas||0,
-        activo:            socio.activo!==false,
-        sexo:              nd(socio.sexo),
-        notas:             nd(socio.notas),
-        color:             socio.color||'#C8F135',
-        vendedor_id:       nd(socio.vendedor_id),
-        vendedor_nombre:   nd(socio.vendedor_nombre),
-        ultima_visita:     nd(socio.ultima_visita),
-        avisos_ids:        JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
+        id:String(socio.id), nombre:socio.nombre, apellido_paterno:socio.apellido_paterno,
+        apellido_materno:nd(socio.apellido_materno), numero:nd(socio.numero),
+        correo:nd(socio.correo), numero_emergencia:nd(socio.numero_emergencia),
+        plan:nd(socio.plan), fecha_inicio:nd(socio.fecha_inicio),
+        fecha_vencimiento:nd(socio.fecha_vencimiento), fecha_nacimiento:nd(socio.fecha_nacimiento),
+        visitas:socio.visitas||0, activo:socio.activo!==false, sexo:nd(socio.sexo),
+        notas:nd(socio.notas), color:socio.color||'#C8F135',
+        vendedor_id:nd(socio.vendedor_id), vendedor_nombre:nd(socio.vendedor_nombre),
+        ultima_visita:nd(socio.ultima_visita),
+        avisos_ids:JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
       };
-
       if (idx > -1) {
         C.socios[idx] = socio;
         pat('socios', 'id=eq.'+socio.id, data);
         bump();
       } else {
-        // Nuevo socio: guardar en buffer mientras Supabase confirma
         _pending[String(socio.id)] = socio;
         C.socios.push(socio);
         post('socios', data).then(function(r){
-          if (r && !r._error && Array.isArray(r) && r.length>0) {
-            delete _pending[String(socio.id)];
-            bump();
-          } else if (r && r._error) {
-            // Error ya mostrado en sbFetch como toast
-          }
+          if(r&&!r._error&&Array.isArray(r)&&r.length>0){ delete _pending[String(socio.id)]; bump(); }
         });
-        return; // bump se hace en el .then
+        return;
       }
 
       // Sincronizar abonos
@@ -458,28 +436,32 @@ var GymDB = (function () {
   // ── Helper: sync de tablas de catálogo ─────────────────────────
   function _syncCat(table, prev, next, fields) {
     var prevMap = {};
-    prev.forEach(function(p){ prevMap[p.id]=p; });
+    prev.forEach(function(p){ if(p.id) prevMap[String(p.id)]=p; });
 
     next.forEach(function(item) {
       var body = {};
-      fields.forEach(function(f){ body[f]=item[f]; });
+      fields.forEach(function(f){ body[f] = (item[f]===''||item[f]===undefined) ? null : item[f]; });
 
-      if (item.id && prevMap[item.id]) {
-        // Existente: comparar si cambió
+      if (item.id && prevMap[String(item.id)]) {
+        // Existente: PATCH solo si cambió
         var cambio = fields.some(function(f){
-          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[item.id][f]);
+          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[String(item.id)][f]);
         });
         if (cambio) pat(table, 'id=eq.'+item.id, body);
-      } else {
-        // Nuevo
-        post(table, body).then(function(r){ if(r&&r[0]) item.id=r[0].id; });
+      } else if (!item.id) {
+        // Nuevo: POST sin id, Supabase asigna SERIAL
+        post(table, body).then(function(r){
+          if(r && !r._error && Array.isArray(r) && r[0]) {
+            item.id = r[0].id; // guardar el id real
+          }
+        });
       }
     });
 
-    // Eliminados
-    var nextIds = next.map(function(n){ return n.id; });
+    // Eliminados: solo los que tenían id real
+    var nextIds = next.filter(function(n){ return n.id; }).map(function(n){ return String(n.id); });
     prev.forEach(function(p) {
-      if (nextIds.indexOf(p.id) === -1) del(table, 'id=eq.'+p.id);
+      if (p.id && nextIds.indexOf(String(p.id)) === -1) del(table, 'id=eq.'+p.id);
     });
   }
 
