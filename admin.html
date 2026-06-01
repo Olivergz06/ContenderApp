@@ -276,7 +276,7 @@ textarea{resize:vertical;min-height:70px;}
 
 <!-- ═══ CATÁLOGO ══════════════════════════════════════════════ -->
 <div class="screen" id="screen-catalogo">
-  <div class="hdr"><div><h1>Catálogo</h1></div><div class="hdr-r"><button class="btn bl bsm" id="btn-cat-nuevo">+ Nuevo</button></div></div>
+  <div class="hdr"><div><h1>Catálogo</h1></div><div class="hdr-r"><button class="btn bd bsm" id="btn-sync-cat">↻</button><button class="btn bl bsm" id="btn-cat-nuevo">+ Nuevo</button></div></div>
   <div class="tabs">
     <button class="tab active" data-cat="membresias">Membresías</button>
     <button class="tab" data-cat="clases">Clases</button>
@@ -1208,6 +1208,14 @@ document.addEventListener("DOMContentLoaded",function(){
   // Catálogo
   document.querySelectorAll(".tab[data-cat]").forEach(function(b){b.addEventListener("click",function(){catTab=this.dataset.cat;document.querySelectorAll(".tab[data-cat]").forEach(function(x){x.classList.toggle("active",x.dataset.cat===catTab);});renderCatalogo();});});
   ge("btn-cat-nuevo").addEventListener("click",catNuevo);
+  ge("btn-sync-cat").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){
+      recargarDatos(); renderCatalogo();
+      b.textContent="↻"; b.disabled=false;
+      mostrarToast("↻ Actualizado");
+    });
+  });
 
   // Reportes
   ge("r-desde").addEventListener("change",renderReporte);

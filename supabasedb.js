@@ -75,6 +75,8 @@ var GymDB = (function () {
     for (var i=0; i<arr.length; i++) if (String(arr[i].id)===sid) return i;
     return -1;
   }
+  // Deep copy de un array de objetos simples
+  function deepCopy(arr){ return JSON.parse(JSON.stringify(arr||[])); }
   var _pending = {};
 
   // Notifica a otros tabs que hubo un cambio
@@ -177,7 +179,7 @@ var GymDB = (function () {
     },
 
     // ── SOCIOS ──────────────────────────────────────────────────
-    getSocios: function()    { return C.socios; },
+    getSocios: function()    { return deepCopy(C.socios); },
     saveSocios: function(arr){ C.socios = arr; },  // usado solo internamente
 
     getSocio: function(id) {
@@ -337,28 +339,28 @@ var GymDB = (function () {
     },
 
     // ── CATÁLOGO ────────────────────────────────────────────────
-    getMembresias:  function()    { return C.membresias; },
+    getMembresias:  function()    { return deepCopy(C.membresias); },
     saveMembresias: function(arr) {
       _syncCat('membresias', C.membresias, arr, ['nombre','dias','precio','descripcion']);
       C.membresias = arr;
       bump();
     },
 
-    getClases:  function()    { return C.clases; },
+    getClases:  function()    { return deepCopy(C.clases); },
     saveClases: function(arr) {
       _syncCat('clases', C.clases, arr, ['nombre','hora','coach','cupo','dias','color']);
       C.clases = arr;
       bump();
     },
 
-    getProductos:  function()    { return C.productos; },
+    getProductos:  function()    { return deepCopy(C.productos); },
     saveProductos: function(arr) {
       _syncCat('productos', C.productos, arr, ['nombre','costo','stock','cat']);
       C.productos = arr;
       bump();
     },
 
-    getMensajes:  function()    { return C.mensajes; },
+    getMensajes:  function()    { return deepCopy(C.mensajes); },
     saveMensajes: function(arr) {
       _syncCat('mensajes_wa', C.mensajes, arr, ['nombre','cuerpo']);
       C.mensajes = arr;
@@ -412,7 +414,7 @@ var GymDB = (function () {
 
     // ── HISTÓRICO / TRAINERS ────────────────────────────────────
     getHistorico: function() { return C.historico; },
-    getTrainers:  function() { return C.trainers;  },
+    getTrainers:  function() { return deepCopy(C.trainers); },
     saveTrainers: function(arr) {
       _syncCat('trainers', C.trainers, arr, ['telefono','codigo','nombre']);
       C.trainers = arr;
@@ -437,43 +439,36 @@ var GymDB = (function () {
 
   // ── Helper: sync de tablas de catálogo ─────────────────────────
   function _syncCat(table, prev, next, fields) {
-    // prevMap solo con ids REALES de Supabase (números pequeños tipo SERIAL)
-    // Un id "real" existe en la tabla; un id falso (Date.now()) no existe
+    // prev = copia del cache ANTES de modificar (deepCopy via getter)
+    // next = array modificado por el admin
     var prevMap = {};
     prev.forEach(function(p){ if(p.id) prevMap[String(p.id)]=p; });
 
     next.forEach(function(item) {
       var body = {};
       fields.forEach(function(f){
-        var v = item[f];
-        body[f] = (v===''||v===undefined) ? null : v;
+        var v=item[f]; body[f]=(v===''||v===undefined)?null:v;
       });
 
-      var sid = item.id ? String(item.id) : null;
-      var enSupabase = sid && prevMap[sid];
-
-      if (enSupabase) {
-        // Existe en Supabase → PATCH solo si cambió
+      if (item.id && prevMap[String(item.id)]) {
+        // Existente en Supabase → PATCH si cambió
+        var prev_item = prevMap[String(item.id)];
         var cambio = fields.some(function(f){
-          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[sid][f]);
+          return JSON.stringify(item[f]) !== JSON.stringify(prev_item[f]);
         });
         if (cambio) pat(table, 'id=eq.'+item.id, body);
       } else {
-        // Nuevo (sin id, o con id falso que no está en Supabase) → POST
-        // NO incluir id en body: Supabase asigna SERIAL automáticamente
+        // Nuevo → POST sin id, Supabase asigna SERIAL
         post(table, body).then(function(r){
-          if(r&&!r._error&&Array.isArray(r)&&r[0]){
-            item.id = r[0].id; // guardar el id real de Supabase
-          }
+          if(r&&!r._error&&Array.isArray(r)&&r[0]) item.id=r[0].id;
         });
       }
     });
 
-    // Eliminados: solo ids reales que ya no están en next
-    var nextIds = next.filter(function(n){ return n.id && prevMap[String(n.id)]; })
-                      .map(function(n){ return String(n.id); });
-    prev.forEach(function(p) {
-      if (p.id && nextIds.indexOf(String(p.id)) === -1) del(table, 'id=eq.'+p.id);
+    // Eliminados: ids en Supabase que ya no están en next
+    var nextIds=next.filter(function(n){return n.id;}).map(function(n){return String(n.id);});
+    prev.forEach(function(p){
+      if(p.id&&nextIds.indexOf(String(p.id))===-1) del(table,'id=eq.'+p.id);
     });
   }
 
