@@ -216,7 +216,9 @@ textarea{resize:vertical;min-height:70px;}
     </div>
     <div class="f2">
       <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Ap. M."></div>
-      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="5512345678" inputmode="numeric"></div>
+      <div class="fr"><label>Teléfono * <span style="font-size:10px;color:var(--muted);font-weight:400">(para acceso)</span></label>
+        <input type="tel" id="f-tel" placeholder="5512345678" inputmode="numeric">
+      </div>
     </div>
     <div class="f2">
       <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="5500000000" inputmode="numeric"></div>
@@ -390,6 +392,7 @@ textarea{resize:vertical;min-height:70px;}
 var _gymdbReady = GymDB.init(); // Promise
 
 var TRAINERS    = [];
+var TRAINER_ACTIVO = null;
 var PIN_ADMIN   = "1234";
 var PLAN_PRECIO = {Mensual:1200,Trimestral:3200,Semestral:5800,Anual:11000};
 var PLAN_DIAS   = {Mensual:30,Trimestral:90,Semestral:180,Anual:365};
@@ -485,6 +488,7 @@ function intentarLogin(){
   var code=ge("login-code").value.trim().toUpperCase();
   var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo===code;});
   if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
+  TRAINER_ACTIVO=ok;
   ge("login-err").textContent="";
   ge("screen-login").classList.remove("active");
   ge("nav-trainer").style.display="flex";
@@ -634,13 +638,15 @@ function _nextSocioId(){ if(!SOCIOS.length)return"001"; var mx=SOCIOS.reduce(fun
 function _calcVenc(){ var fi=ge("f-inicio").value,pl=ge("f-plan").value; if(fi&&PLAN_DIAS[pl]){ge("f-vence").value=addDays(fi,PLAN_DIAS[pl]);ge("f-vence").style.color="var(--lime)";} }
 function guardarSocio(){
   var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  if(!nombre||!ap){alert("Nombre y apellido son requeridos");return;}
-  if(!id){alert("Error: sin número");return;}
+  var tel=ge("f-tel").value.trim();
+  if(!nombre||!ap){ alert("Nombre y apellido son requeridos"); return; }
+  if(!tel){ alert("El teléfono es requerido\nEl socio lo necesita para entrar a su perfil"); return; }
+  if(!id){ alert("Error: sin número de socio"); return; }
   var fi=ge("f-inicio").value, plan=ge("f-plan").value, vence=ge("f-vence").value;
   if(fi&&plan&&!vence&&PLAN_DIAS[plan]) vence=addDays(fi,PLAN_DIAS[plan]);
   var prev=SOCIOS.find(function(x){return x.id===id;})||{};
   var datos={id:id,nombre:nombre,apellido_paterno:ap,apellido_materno:ge("f-am").value.trim()||null,
-    numero:ge("f-tel").value.trim()||null, numero_emergencia:ge("f-emerg").value.trim()||null,
+    numero:tel, numero_emergencia:ge("f-emerg").value.trim()||null,
     correo:ge("f-correo").value.trim()||null, notas:ge("f-notas").value.trim()||null,
     fecha_vencimiento:vence||null, fecha_inicio:fi||null, fecha_nacimiento:ge("f-nac").value||null,
     plan:plan||null, sexo:ge("f-sexo").value||null,
@@ -649,11 +655,7 @@ function guardarSocio(){
   var btn=ge("btn-guardar-socio"); btn.disabled=true; btn.textContent="Guardando…";
   GymDB.setSocio(datos);
   SOCIOS=GymDB.getSocios();
-  setTimeout(function(){
-    btn.disabled=false; btn.textContent="Guardar";
-    mostrarToast("✓ Socio guardado");
-    showScreen("socios");
-  }, 1500);
+  setTimeout(function(){ btn.disabled=false; btn.textContent="Guardar"; mostrarToast("✓ Socio guardado"); showScreen("socios"); },1500);
 }
 
 // ── DETALLE SOCIO ─────────────────────────────────────────────
