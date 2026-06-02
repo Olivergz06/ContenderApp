@@ -494,16 +494,13 @@ var GymDB = (function () {
 
     // ── SINCRONIZACIÓN CROSS-TAB / CROSS-DEVICE ─────────────────
     onChange: function(callback) {
-      // Mismo navegador, tabs distintos → via localStorage
+      // Solo cross-tab mismo navegador via localStorage
+      // Sin polling automático — el usuario sincroniza manualmente con ↻
       window.addEventListener('storage', function(e) {
         if (e.key === 'gymdb_sb_v') {
           loadAll().then(function(){ setTimeout(callback, 80); });
         }
       });
-      // Polling cada 60s para distintos dispositivos
-      setInterval(function(){
-        loadAll().then(callback);
-      }, 10000);
     }
 
   }; // fin return

@@ -1380,12 +1380,7 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("r-desde").value=hoy; ge("r-hasta").value=hoy;
 
   // ── Sincronización cross-tab y polling ────────────────────
-  GymDB.onChange(function(){
-    if(ge("screen-login").classList.contains("active")) return;
-    recargarDatos();
-    mostrarToast("↻ Sincronizado");
-    renderPantallaActual();
-  });
+  // Sin actualización automática — el admin usa el botón ↻
 
   }).catch(function(err){
     var ov=document.getElementById('ov-loading');

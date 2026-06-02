@@ -508,13 +508,15 @@ function showScreen(id){
 function intentarLogin(){
   var tel =ge("login-tel").value.replace(/\D/g,"").trim();
   var code=ge("login-code").value.trim().toUpperCase();
-  var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo===code;});
+  var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo.toUpperCase()===code;});
   if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
+  TRAINER_ACTIVO = ok;
   ge("login-err").textContent="";
   ge("screen-login").classList.remove("active");
   ge("nav-trainer").style.display="flex";
   var str=new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
   ge("hdr-fecha").textContent=str.charAt(0).toUpperCase()+str.slice(1);
+  if(ge("hdr-trainer-nombre")) ge("hdr-trainer-nombre").textContent=ok.nombre;
   showScreen("inicio");
 }
 
@@ -605,12 +607,12 @@ function showScreen(id){
 
 function confirmarCobro(){
   if(!_cobroPendiente) return;
-  var codigo=ge("cobrar-codigo").value.trim();
-  if(!codigo){ge("cobrar-error").textContent="Ingresa tu código";return;}
-  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer",codigo:""};
-  // Comparar sin importar mayúsculas/minúsculas
-  if(codigo.toLowerCase()!==(t.codigo||"").toLowerCase()){
-    ge("cobrar-error").textContent="Código incorrecto. Tu código es el que usas para entrar";
+  var codigo = ge("cobrar-codigo").value.trim();
+  if(!codigo){ ge("cobrar-error").textContent="Ingresa tu código"; return; }
+  var t = TRAINER_ACTIVO;
+  if(!t){ ge("cobrar-error").textContent="Sesión no iniciada"; return; }
+  if(codigo.toUpperCase() !== (t.codigo||"").toUpperCase()){
+    ge("cobrar-error").textContent="Código incorrecto (usa el mismo con el que entraste)";
     return;
   }
   DEUDAS[_cobroPendiente.socioId]=(DEUDAS[_cobroPendiente.socioId]||[]).filter(function(d){
@@ -1204,7 +1206,7 @@ document.addEventListener("DOMContentLoaded",function(){
   GymDB.onChange(function(){
     if(ge("screen-login").classList.contains("active")) return;
     recargarDatos();
-    mostrarToast("↻ Sincronizado");
+
     renderPantallaActual();
   });
 

@@ -1046,6 +1046,14 @@ document.getElementById("btn-guardar-seg").addEventListener("click",function(){
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
   // Cargar clases e inscritos cuando Supabase está listo
+  ge("popup-ok").addEventListener("click", function(){
+    _popupPagoVisto = true;
+    ge("popup-pago").classList.remove("open");
+  });
+  ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){
+    if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); }
+  });
+
   _gymdbReady.then(function(){
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
@@ -1081,7 +1089,6 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // Cerrar modales al tocar el fondo
   ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
-  ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){ if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); } });
 
   renderHeader(); renderQR(); renderMembresia();
   renderStats(); renderProximaClase(); renderAbonos(); renderDeudas();
@@ -1096,8 +1103,6 @@ document.addEventListener("DOMContentLoaded",function(){
     renderHeader(); renderQR(); renderMembresia();
     renderStats(); renderProximaClase(); renderAbonos(); renderDeudas(); checkPopupPago();
   });
-  // Cerrar popup
-  ge("popup-ok").addEventListener("click", function(){ _popupPagoVisto=true; ge("popup-pago").classList.remove("open"); });
 
   // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
