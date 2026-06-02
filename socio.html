@@ -756,19 +756,33 @@ function renderAbonos(){
 }
 
 // ── POPUP PAGO PENDIENTE ──────────────────────────────────────
+var _popupPagoVisto = false;
 function checkPopupPago(){
-  var hoy     = new Date(); hoy.setHours(0,0,0,0);
-  var abonos  = SOCIO.abonos || [];
-  var deudas  = DEUDAS_POR_SOCIO[SOCIO.id] || [];
-  var textos  = [];
+  if(_popupPagoVisto) return;
 
-  // Solo mostrar si hoy es DESPUÉS de la fecha límite del abono pendiente
+  // Solo entre 4pm y 9pm hora Ciudad de México
+  var ahora = new Date();
+  var horaMx = new Date(ahora.toLocaleString("en-US", {timeZone:"America/Mexico_City"}));
+  var h = horaMx.getHours();
+  if(h < 16 || h >= 21) return; // fuera del horario
+
+  // Solo una vez al día — guardar la fecha en localStorage
+  var hoyStr = horaMx.toISOString().slice(0,10);
+  try {
+    var ultimaVez = localStorage.getItem('contender_popup_pago');
+    if(ultimaVez === hoyStr) return; // ya se mostró hoy
+  } catch(e){}
+
+  var hoy    = new Date(); hoy.setHours(0,0,0,0);
+  var abonos = SOCIO.abonos || [];
+  var deudas = DEUDAS_POR_SOCIO[String(SOCIO.id)] || [];
+  var textos = [];
+
   var pendMem = abonos.filter(function(a){
     if(a.pagado) return false;
     var limite = new Date(a.fecha_limite+"T00:00:00");
     return hoy > limite;
   });
-
   if(pendMem.length){
     var a    = pendMem[0];
     var fmtL = new Date(a.fecha_limite+"T00:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"long"});
@@ -779,6 +793,10 @@ function checkPopupPago(){
     textos.push("Tienes "+deudas.length+" producto"+(deudas.length>1?"s":"")+" por pagar: "+fm(totalP)+".");
   }
   if(!textos.length) return;
+
+  // Guardar que ya se mostró hoy
+  try { localStorage.setItem('contender_popup_pago', hoyStr); } catch(e){}
+
   ge("popup-texto").textContent = textos.join(" ");
   ge("popup-pago").classList.add("open");
 }
@@ -1029,9 +1047,8 @@ document.addEventListener("DOMContentLoaded",function(){
   ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
 
   // Cerrar modales al tocar el fondo
-  ['modal-add-cuenta','popup-pago'].forEach(function(id){
-    var el=ge(id); if(el) el.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
-  });
+  ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+  ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){ if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); } });
 
   renderHeader(); renderQR(); renderMembresia();
   renderStats(); renderProximaClase(); renderAbonos(); renderDeudas();
@@ -1039,6 +1056,7 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("sel-perfil").addEventListener("change", function(){
     SOCIO = PERFILES.find(function(p){ return p.id===this.value; }, this) || PERFILES[0];
     SOCIO_ID = SOCIO.id;
+    _popupPagoVisto = false; // nuevo perfil → permitir popup de nuevo
     CLASES   = GymDB.getClases();
     INSCRITOS= GymDB.getAllInscritos();
     cargarRutinaDeGymDB();
@@ -1046,7 +1064,7 @@ document.addEventListener("DOMContentLoaded",function(){
     renderStats(); renderProximaClase(); renderAbonos(); renderDeudas(); checkPopupPago();
   });
   // Cerrar popup
-  ge("popup-ok").addEventListener("click", function(){ ge("popup-pago").classList.remove("open"); });
+  ge("popup-ok").addEventListener("click", function(){ _popupPagoVisto=true; ge("popup-pago").classList.remove("open"); });
 
   // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
