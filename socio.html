@@ -300,7 +300,7 @@ input:focus,select:focus{border-color:var(--lime);}
 
 <!-- ═══ SCREEN: INICIO ═══════════════════════════════════════ -->
 <!-- ═══ SCREEN: LOGIN ════════════════════════════════════════ -->
-<div class="screen" id="screen-login">
+<div class="screen active" id="screen-login">
   <div class="perfil-screen">
     <div class="perfil-titulo" style="font-size:52px;letter-spacing:-2px">CONTENDER<br>CLUB</div>
     <div class="perfil-sub" style="margin-bottom:28px">Ingresa tus datos para continuar</div>
@@ -323,12 +323,12 @@ input:focus,select:focus{border-color:var(--lime);}
 </div>
 
 <!-- ═══ SCREEN: SELECCIÓN DE PERFIL ═════════════════════════ -->
-<div class="screen active" id="screen-perfiles">
+<div class="screen" id="screen-perfiles">
   <div class="perfil-screen">
     <!-- Botón agregar cuenta arriba a la derecha -->
-    <button id="btn-add-cuenta" style="position:absolute;top:20px;right:20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;font-weight:700;color:var(--lime);cursor:pointer;font-family:'DM Sans',sans-serif">+ Agregar</button>
+    <button id="btn-add-cuenta" style="position:absolute;top:20px;right:20px;background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:38px;height:38px;font-size:20px;color:var(--lime);cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
     <div class="perfil-titulo">CONTENDER<br>CLUB</div>
-    <div class="perfil-sub" id="perfiles-sub">Agrega tu perfil para comenzar</div>
+    <div class="perfil-sub">¿Quién entrena hoy?</div>
     <div class="perfil-lista" id="lista-perfiles"></div>
   </div>
 </div>
@@ -415,6 +415,40 @@ input:focus,select:focus{border-color:var(--lime);}
 <div class="nav-ph"></div>
 
 <!-- DATA -->
+</div>
+
+
+<!-- ═══ SCREEN: SEGUIMIENTO ════════════════════════════════════ -->
+<div class="screen" id="screen-seguimiento">
+  <div class="hdr">
+    <div><h1>Seguimiento</h1></div>
+  </div>
+  <div class="sec" style="padding-bottom:20px">
+
+    <!-- Registro del mes actual -->
+    <span class="lbl">Registrar este mes</span>
+    <div class="card" style="margin-bottom:14px">
+      <div class="f2">
+        <div class="fr">
+          <label>Peso (kg)</label>
+          <input type="number" id="seg-peso" placeholder="75.5" inputmode="decimal" step="0.1"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+        </div>
+        <div class="fr">
+          <label>Músculo (kg)</label>
+          <input type="number" id="seg-musculo" placeholder="32.0" inputmode="decimal" step="0.1"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+        </div>
+      </div>
+      <button id="btn-guardar-seg" class="btn btn-lime" style="width:100%;padding:13px;margin-top:10px;font-size:15px">Guardar medidas del mes</button>
+    </div>
+
+    <!-- Historial -->
+    <span class="lbl">Historial</span>
+    <div id="seg-historial"></div>
+
+  </div>
+  <div class="nav-ph"></div>
 </div>
 
 <!-- POPUP: PAGO PENDIENTE -->
@@ -563,6 +597,7 @@ function showScreen(id) {
   ge('nav-socio').style.display = 'flex';
   if(id === 'inicio')  { renderHeader(); renderQR(); renderMembresia(); renderStats(); renderProximaClase(); renderAbonos(); renderDeudas(); checkPopupPago(); }
   if(id === 'clases')  { renderMisClases(); renderClasesDia(); }
+  if(id === 'seguimiento') { renderSeguimiento(); }
   if(id === 'rutina')  { cargarRutinaDeGymDB(); renderDayBar(); renderDia(); }
 }
 
@@ -577,7 +612,6 @@ document.addEventListener('DOMContentLoaded', function(){
     if(ov) ov.style.display='none';
     CLASES   = GymDB.getClases();
     INSCRITOS= GymDB.getAllInscritos();
-    renderPerfiles();
   }).catch(function(e){
     var ov=document.getElementById('ov-loading');
     var errEl=document.getElementById('ov-err');
@@ -793,7 +827,9 @@ function checkPopupPago(){
   ge("popup-pago").classList.add("open");
 }
 function renderDeudas(){
-  var deudas = DEUDAS_POR_SOCIO[SOCIO.id] || [];
+  // Recargar siempre para tener datos frescos
+  DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
+  var deudas = DEUDAS_POR_SOCIO[String(SOCIO.id)] || [];
   var lbl = ge("lbl-deudas");
   var c   = ge("deudas-lista");
   if(!deudas.length){ lbl.style.display="none"; c.innerHTML=""; return; }
@@ -955,6 +991,51 @@ function renderProximaClase(){
     "</div>";
 }
 
+
+// ── SEGUIMIENTO MENSUAL ───────────────────────────────────────
+function renderSeguimiento(){
+  // Cargar historial del socio desde tabla seguimiento_socio
+  GymDB.getSeguimiento(SOCIO_ID, function(historial){
+    // Prellenar con el último registro si es de este mes
+    var mesActual = new Date().toISOString().slice(0,7); // YYYY-MM
+    var ultimo = historial.find(function(h){ return h.mes===mesActual; });
+    if(ultimo){
+      ge("seg-peso").value = ultimo.peso||"";
+      ge("seg-musculo").value = ultimo.musculo||"";
+    }
+    // Render historial
+    var html="";
+    if(!historial.length){
+      html="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
+    } else {
+      historial.slice().sort(function(a,b){return b.mes.localeCompare(a.mes);}).forEach(function(h){
+        var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        var parts=h.mes.split("-"), mesNom=meses[parseInt(parts[1],10)-1]+" "+parts[0];
+        html+="<div class='card' style='display:flex;align-items:center;gap:12px;margin-bottom:8px'>";
+        html+="<div style='flex:1'><div style='font-weight:700;font-size:13px'>"+mesNom+"</div></div>";
+        if(h.peso)    html+="<div style='text-align:center'><div style='font-family:"Bebas Neue",sans-serif;font-size:20px;color:#4ECDC4'>"+h.peso+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        if(h.musculo) html+="<div style='text-align:center'><div style='font-family:"Bebas Neue",sans-serif;font-size:20px;color:var(--green)'>"+h.musculo+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        html+="</div>";
+      });
+    }
+    ge("seg-historial").innerHTML=html;
+  });
+}
+
+document.getElementById("btn-guardar-seg").addEventListener("click",function(){
+  var peso   = parseFloat(ge("seg-peso").value)||null;
+  var musculo= parseFloat(ge("seg-musculo").value)||null;
+  if(!peso&&!musculo){ alert("Ingresa al menos un valor"); return; }
+  var mes = new Date().toISOString().slice(0,7);
+  GymDB.saveSeguimiento(SOCIO_ID, mes, peso, musculo, function(){
+    // Actualizar stats en inicio
+    if(peso)    { ge("st-peso").textContent=peso+"kg"; }
+    if(musculo) { ge("st-musculo").textContent=musculo+"kg"; }
+    mostrarToast("✓ Medidas guardadas");
+    renderSeguimiento();
+  });
+});
+
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
   renderHeader(); renderQR(); renderMembresia();
@@ -974,12 +1055,11 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
-    // Siempre actualizar clases e inscritos (para que admin->socio se refleje)
-    CLASES   = GymDB.getClases();
-    INSCRITOS= GymDB.getAllInscritos();
     if(!SOCIO) return; // no logueado aún
     // Recargar datos frescos
     DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
+    CLASES            = GymDB.getClases();
+    INSCRITOS         = GymDB.getAllInscritos();
     // Actualizar el perfil del socio activo
     var socFresh = GymDB.getSocio(SOCIO.id);
     if(socFresh) SOCIO = socioToPerfile(socFresh);

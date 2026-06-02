@@ -135,8 +135,9 @@ var GymDB = (function () {
       // Inscritos → { clase_id: [socio_ids] }
       C.inscritos = {};
       (res[8]||[]).forEach(function(i) {
-        if (!C.inscritos[i.clase_id]) C.inscritos[i.clase_id] = [];
-        C.inscritos[i.clase_id].push(i.socio_id);
+        var cid=String(i.clase_id);
+        if (!C.inscritos[cid]) C.inscritos[cid] = [];
+        C.inscritos[cid].push(String(i.socio_id));
       });
 
       C.trainers = res[9]  || [];
@@ -188,40 +189,38 @@ var GymDB = (function () {
     },
 
     setSocio: function(socio) {
-      var self  = this;
-      var idx   = findIdx(C.socios, socio.id);
-      var abonos= (socio.abonos || []).slice();
+      var self=this, idx=findIdx(C.socios,socio.id), abonos=(socio.abonos||[]).slice();
       function nd(v){ return (v===''||v===undefined)?null:v; }
-      var data = {
-        id:String(socio.id), nombre:socio.nombre, apellido_paterno:socio.apellido_paterno,
-        apellido_materno:nd(socio.apellido_materno), numero:nd(socio.numero),
-        correo:nd(socio.correo), numero_emergencia:nd(socio.numero_emergencia),
-        plan:nd(socio.plan), fecha_inicio:nd(socio.fecha_inicio),
-        fecha_vencimiento:nd(socio.fecha_vencimiento), fecha_nacimiento:nd(socio.fecha_nacimiento),
-        visitas:socio.visitas||0, activo:socio.activo!==false, sexo:nd(socio.sexo),
-        notas:nd(socio.notas), color:socio.color||'#C8F135',
-        vendedor_id:nd(socio.vendedor_id), vendedor_nombre:nd(socio.vendedor_nombre),
+      var data={
+        id:String(socio.id),nombre:socio.nombre,apellido_paterno:socio.apellido_paterno,
+        apellido_materno:nd(socio.apellido_materno),numero:nd(socio.numero),
+        correo:nd(socio.correo),numero_emergencia:nd(socio.numero_emergencia),
+        plan:nd(socio.plan),fecha_inicio:nd(socio.fecha_inicio),
+        fecha_vencimiento:nd(socio.fecha_vencimiento),fecha_nacimiento:nd(socio.fecha_nacimiento),
+        visitas:socio.visitas||0,activo:socio.activo!==false,sexo:nd(socio.sexo),
+        notas:nd(socio.notas),color:socio.color||'#C8F135',
+        vendedor_id:nd(socio.vendedor_id),vendedor_nombre:nd(socio.vendedor_nombre),
         ultima_visita:nd(socio.ultima_visita),
         avisos_ids:JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
       };
-      if (idx > -1) {
-        C.socios[idx] = socio;
-        pat('socios','id=eq.'+socio.id, data);
-        if (nd(socio.numero)) {
-          var ci=findIdx(C.cuentas, String(socio.id));
-          if (ci>-1 && C.cuentas[ci].telefono!==socio.numero) {
+      if(idx>-1){
+        C.socios[idx]=socio;
+        pat('socios','id=eq.'+socio.id,data);
+        if(nd(socio.numero)){
+          var ci=findIdx(C.cuentas,String(socio.id));
+          if(ci>-1&&C.cuentas[ci].telefono!==socio.numero){
             C.cuentas[ci].telefono=socio.numero;
             pat('cuentas','id=eq.'+C.cuentas[ci].id,{telefono:socio.numero});
           }
         }
         bump();
       } else {
-        _pending[String(socio.id)] = socio;
+        _pending[String(socio.id)]=socio;
         C.socios.push(socio);
-        post('socios', data).then(function(r){
+        post('socios',data).then(function(r){
           if(r&&!r._error&&Array.isArray(r)&&r.length>0){
             delete _pending[String(socio.id)];
-            if (nd(socio.numero)) self.crearCuenta(String(socio.id), socio.numero);
+            if(nd(socio.numero)) self.crearCuenta(String(socio.id),socio.numero);
             bump();
           }
         });
@@ -253,16 +252,31 @@ var GymDB = (function () {
       }
       return null;
     },
-
     crearCuenta: function(socioId, telefono) {
       var codigo=String(socioId);
-      var existe=C.cuentas.some(function(c){ return c.socios&&c.socios.indexOf(socioId)>-1; });
+      var existe=C.cuentas.some(function(c){return c.socios&&c.socios.indexOf(socioId)>-1;});
       if(existe) return;
-      var cuenta={telefono:telefono, codigo:codigo, socios:[socioId]};
+      var cuenta={telefono:telefono,codigo:codigo,socios:[socioId]};
       C.cuentas.push(cuenta);
-      post('cuentas', cuenta).then(function(r){
-        if(r&&!r._error&&Array.isArray(r)&&r[0]) cuenta.id=r[0].id;
-      });
+      post('cuentas',cuenta).then(function(r){if(r&&!r._error&&Array.isArray(r)&&r[0])cuenta.id=r[0].id;});
+    },
+
+    // ── SEGUIMIENTO MENSUAL ─────────────────────────────────────
+    getSeguimiento: function(socioId, callback) {
+      get('seguimiento_socio','select=*&socio_id=eq.'+socioId+'&order=mes.desc')
+        .then(function(r){ callback(Array.isArray(r)?r:[]); });
+    },
+    saveSeguimiento: function(socioId, mes, peso, musculo, callback) {
+      // Upsert: si ya existe el mes, actualizar; si no, insertar
+      get('seguimiento_socio','select=id&socio_id=eq.'+socioId+'&mes=eq.'+mes)
+        .then(function(r){
+          if(Array.isArray(r)&&r.length>0){
+            pat('seguimiento_socio','id=eq.'+r[0].id,{peso:peso,musculo:musculo});
+          } else {
+            post('seguimiento_socio',{socio_id:socioId,mes:mes,peso:peso,musculo:musculo});
+          }
+          if(callback) callback();
+        });
     },
 
     // ── DEUDAS ──────────────────────────────────────────────────
@@ -389,22 +403,24 @@ var GymDB = (function () {
     },
 
     // ── INSCRITOS ────────────────────────────────────────────────
-    getAllInscritos:       function()    { return C.inscritos; },
-    getInscritosPorClase: function(cid) { return C.inscritos[cid] || []; },
+    getAllInscritos:       function()    { return deepCopyObj(C.inscritos); },
+    getInscritosPorClase: function(cid) { return C.inscritos[String(cid)] || []; },
     saveAllInscritos:     function(obj) { C.inscritos = obj; },
 
     inscribirSocio: function(cid, sid) {
-      if (!C.inscritos[cid]) C.inscritos[cid] = [];
-      if (C.inscritos[cid].indexOf(sid) === -1) {
-        C.inscritos[cid].push(sid);
-        post('inscritos',{ clase_id:cid, socio_id:sid });
+      var cids=String(cid), sids=String(sid);
+      if (!C.inscritos[cids]) C.inscritos[cids] = [];
+      if (C.inscritos[cids].indexOf(sids) === -1) {
+        C.inscritos[cids].push(sids);
+        post('inscritos',{ clase_id:+cid, socio_id:sids });
         bump();
       }
     },
 
     desinscribirSocio: function(cid, sid) {
-      if (C.inscritos[cid])
-        C.inscritos[cid] = C.inscritos[cid].filter(function(x){ return x!==sid; });
+      var cids=String(cid), sids=String(sid);
+      if (C.inscritos[cids])
+        C.inscritos[cids] = C.inscritos[cids].filter(function(x){ return x!==sids; });
       del('inscritos','clase_id=eq.'+cid+'&socio_id=eq.'+sid);
       bump();
     },
@@ -460,23 +476,30 @@ var GymDB = (function () {
 
   // ── Helper: sync de tablas de catálogo ─────────────────────────
   function _syncCat(table, prev, next, fields) {
-    var prevMap={};
-    prev.forEach(function(p){ if(p.id) prevMap[String(p.id)]=p; });
+    var prevMap = {};
+    prev.forEach(function(p){ prevMap[p.id]=p; });
+
     next.forEach(function(item) {
-      var body={};
-      fields.forEach(function(f){ var v=item[f]; body[f]=(v===''||v===undefined)?null:v; });
-      var sid=item.id?String(item.id):null, enSB=sid&&prevMap[sid];
-      if(enSB){
-        var cambio=fields.some(function(f){return JSON.stringify(item[f])!==JSON.stringify(prevMap[sid][f]);});
-        if(cambio) pat(table,'id=eq.'+item.id,body);
-      } else {
-        post(table,body).then(function(r){
-          if(r&&!r._error&&Array.isArray(r)&&r[0]) item.id=r[0].id;
+      var body = {};
+      fields.forEach(function(f){ body[f]=item[f]; });
+
+      if (item.id && prevMap[item.id]) {
+        // Existente: comparar si cambió
+        var cambio = fields.some(function(f){
+          return JSON.stringify(item[f]) !== JSON.stringify(prevMap[item.id][f]);
         });
+        if (cambio) pat(table, 'id=eq.'+item.id, body);
+      } else {
+        // Nuevo
+        post(table, body).then(function(r){ if(r&&r[0]) item.id=r[0].id; });
       }
     });
-    var nextIds=next.filter(function(n){return n.id&&prevMap[String(n.id)];}).map(function(n){return String(n.id);});
-    prev.forEach(function(p){ if(p.id&&nextIds.indexOf(String(p.id))===-1) del(table,'id=eq.'+p.id); });
+
+    // Eliminados
+    var nextIds = next.map(function(n){ return n.id; });
+    prev.forEach(function(p) {
+      if (nextIds.indexOf(p.id) === -1) del(table, 'id=eq.'+p.id);
+    });
   }
 
 })();
