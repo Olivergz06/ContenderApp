@@ -325,7 +325,7 @@ input:focus,select:focus{border-color:var(--lime);}
 <div class="screen active" id="screen-perfiles">
   <div class="perfil-screen">
     <!-- Botón agregar cuenta arriba a la derecha -->
-    <button id="btn-add-cuenta" style="position:absolute;top:20px;right:20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;font-weight:700;color:var(--lime);cursor:pointer;font-family:'DM Sans',sans-serif">+ Agregar</button>
+    <button id="btn-add-cuenta" style="position:absolute;top:20px;right:20px;background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:38px;height:38px;font-size:20px;color:var(--lime);cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
     <div class="perfil-titulo">CONTENDER<br>CLUB</div>
     <div class="perfil-sub" id="perfiles-sub">Agrega tu perfil para comenzar</div>
     <div class="perfil-lista" id="lista-perfiles"></div>
@@ -605,23 +605,9 @@ document.querySelectorAll('.nav-item').forEach(function(btn){
 });
 
 document.addEventListener('DOMContentLoaded', function(){
-  // Esperar que Supabase cargue
-  _gymdbReady.then(function(){
-    var ov=document.getElementById('ov-loading');
-    if(ov) ov.style.display='none';
-    CLASES   = GymDB.getClases();
-    INSCRITOS= GymDB.getAllInscritos();
-    renderPerfiles(); // mostrar pantalla de perfiles lista
-  }).catch(function(e){
-    var ov=document.getElementById('ov-loading');
-    var errEl=document.getElementById('ov-err');
-    if(errEl){ errEl.style.display='block'; errEl.textContent='Error de conexión: '+e.message; }
-    console.error('[GymDB]',e);
-  });
-
   ge('nav-socio').style.display = 'none';
 
-  // Login principal
+  // Login principal (pantalla de login, por si se necesita)
   ge('btn-login').addEventListener('click', intentarLogin);
   ['login-tel','login-code'].forEach(function(id){
     ge(id).addEventListener('keydown', function(e){ if(e.key==='Enter') intentarLogin(); });
@@ -1038,6 +1024,17 @@ document.getElementById("btn-guardar-seg").addEventListener("click",function(){
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
+  // Cargar clases e inscritos cuando Supabase está listo
+  _gymdbReady.then(function(){
+    var ov=document.getElementById('ov-loading');
+    if(ov) ov.style.display='none';
+    CLASES   = GymDB.getClases();
+    INSCRITOS= GymDB.getAllInscritos();
+    renderPerfiles(); // pantalla inicial vacía lista para agregar
+  }).catch(function(e){
+    console.error('[GymDB]',e);
+  });
+
   renderHeader(); renderQR(); renderMembresia();
   renderStats(); renderProximaClase(); renderAbonos(); renderDeudas();
   // Cambio de perfil en dropdown
