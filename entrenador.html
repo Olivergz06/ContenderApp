@@ -176,7 +176,6 @@ textarea{resize:vertical;min-height:70px;}
   <div class="hdr">
     <div><h1>Socios</h1></div>
     <div class="hdr-r">
-      <button class="btn bd bsm" id="btn-sync-tr">↻</button>
       <button class="btn bl bsm" id="btn-nuevo-socio">+ Agregar</button>
     </div>
   </div>
@@ -206,25 +205,19 @@ textarea{resize:vertical;min-height:70px;}
     <div class="hdr-r"><button class="btn bd bsm" id="btn-form-cancel">Cancelar</button></div>
   </div>
   <div class="sec" style="padding-bottom:20px">
-    <div class="fr">
-      <label>Núm. Socio <span id="f-id-hint" style="color:var(--lime);font-size:10px;font-weight:400"></span></label>
-      <input type="text" id="f-id" readonly style="color:var(--muted);background:var(--bg3)">
+    <div class="f2">
+      <div class="fr"><label>Núm. Socio</label><input type="text" id="f-id" placeholder="007" inputmode="numeric"></div>
+      <div class="fr"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
     </div>
     <div class="f2">
-      <div class="fr"><label>Nombre *</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
-      <div class="fr"><label>Ap. Paterno *</label><input type="text" id="f-ap" placeholder="Ap. P."></div>
+      <div class="fr"><label>Ap. Paterno</label><input type="text" id="f-ap" placeholder="Apellido P."></div>
+      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Apellido M."></div>
     </div>
     <div class="f2">
-      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Ap. M."></div>
-      <div class="fr"><label>Teléfono * <span style="font-size:10px;color:var(--muted);font-weight:400">(para acceso)</span></label>
-        <input type="tel" id="f-tel" placeholder="5512345678" inputmode="numeric">
-      </div>
+      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="55 1234 5678" inputmode="numeric"></div>
+      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
     </div>
-    <div class="f2">
-      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="5500000000" inputmode="numeric"></div>
-      <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
-    </div>
-    <div class="fr"><label>Fecha de registro</label><input type="date" id="f-inicio"></div>
+    <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
     <div class="f2">
       <div class="fr"><label>Plan</label>
         <select id="f-plan">
@@ -235,10 +228,9 @@ textarea{resize:vertical;min-height:70px;}
           <option value="Anual">Anual</option>
         </select>
       </div>
-      <div class="fr"><label>Vencimiento <span style="color:var(--muted);font-size:10px">(auto)</span></label>
-        <input type="date" id="f-vence" style="color:var(--muted)">
-      </div>
+      <div class="fr"><label>Vencimiento</label><input type="date" id="f-vence"></div>
     </div>
+    <div class="fr"><label>Fecha de alta</label><input type="date" id="f-inicio"></div>
     <div class="f2">
       <div class="fr"><label>Nacimiento</label><input type="date" id="f-nac"></div>
       <div class="fr"><label>Sexo</label>
@@ -267,6 +259,7 @@ textarea{resize:vertical;min-height:70px;}
   <div class="tabs">
     <button class="tab active" data-det="membresia">Membresía y Deudas</button>
     <button class="tab" data-det="info">Información</button>
+    <button class="tab" data-det="seguimiento">Seguimiento</button>
   </div>
   <div id="det-content"></div>
   <div class="nav-ph"></div>
@@ -276,6 +269,7 @@ textarea{resize:vertical;min-height:70px;}
 <nav class="nav-bar" id="nav-trainer" style="display:none">
   <button class="nav-item active" data-screen="inicio"><span class="nav-icon">&#9989;</span>Inicio</button>
   <button class="nav-item" data-screen="socios"><span class="nav-icon">&#128101;</span>Socios</button>
+  <button class="nav-item" data-screen="ventas"><span class="nav-icon">&#128176;</span>Ventas</button>
 </nav>
 
 <!-- MODAL: CHECK-IN -->
@@ -294,7 +288,7 @@ textarea{resize:vertical;min-height:70px;}
     <div id="ci-panel-codigo">
       <div class="fr">
         <label>Número de socio o código QR</label>
-        <input type="text" id="ci-input" placeholder="Ej: 001 o GM-001-ABC123" inputmode="text" autocomplete="off">
+        <input type="text" id="ci-input" placeholder="Número de socio (ej: 007)" inputmode="text" autocomplete="off">
       </div>
       <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px" id="ci-error"></div>
       <div style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);min-height:48px;margin-bottom:12px" id="ci-preview">
@@ -392,7 +386,6 @@ textarea{resize:vertical;min-height:70px;}
 var _gymdbReady = GymDB.init(); // Promise
 
 var TRAINERS    = [];
-var TRAINER_ACTIVO = null;
 var PIN_ADMIN   = "1234";
 var PLAN_PRECIO = {Mensual:1200,Trimestral:3200,Semestral:5800,Anual:11000};
 var PLAN_DIAS   = {Mensual:30,Trimestral:90,Semestral:180,Anual:365};
@@ -488,7 +481,6 @@ function intentarLogin(){
   var code=ge("login-code").value.trim().toUpperCase();
   var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo===code;});
   if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
-  TRAINER_ACTIVO=ok;
   ge("login-err").textContent="";
   ge("screen-login").classList.remove("active");
   ge("nav-trainer").style.display="flex";
@@ -535,6 +527,74 @@ function renderInicio(){
 }
 
 // ── SOCIOS: LISTA ─────────────────────────────────────────────
+function renderVentas(){
+  var t = TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
+  ge("ventas-lista").innerHTML = "<div style='font-size:12px;color:var(--muted)'>Cargando…</div>";
+  GymDB.getCobros(String(t.id)).then(function(cobros){
+    cobros = cobros||[];
+    var totalMes=0, totalHoy=0;
+    var hoy=new Date().toISOString().slice(0,10);
+    var mes=new Date().toISOString().slice(0,7);
+    cobros.forEach(function(c){
+      if(c.fecha&&c.fecha.slice(0,10)===hoy) totalHoy+=+c.monto;
+      if(c.fecha&&c.fecha.slice(0,7)===mes)  totalMes+=+c.monto;
+    });
+    // Resumen
+    ge("ventas-resumen").innerHTML=
+      "<div class='f2' style='gap:8px'>"+
+      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>HOY</div>"+
+      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalHoy)+"</div></div>"+
+      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>ESTE MES</div>"+
+      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalMes)+"</div></div></div>";
+    // Lista
+    if(!cobros.length){
+      ge("ventas-lista").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin ventas registradas aún</div>";
+      return;
+    }
+    var html="";
+    cobros.slice(0,50).forEach(function(c){
+      var tipo=c.tipo==="membresia"?"💳":c.tipo==="deuda"?"📦":"🛒";
+      html+="<div class='card' style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>";
+      html+="<div style='font-size:20px'>"+tipo+"</div>";
+      html+="<div style='flex:1'><div style='font-size:13px;font-weight:600'>"+c.producto+"</div>";
+      html+="<div style='font-size:11px;color:var(--muted)'>"+(c.socio_nombre||"")+" · "+(c.fecha||"")+"</div></div>";
+      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:20px;color:var(--lime)'>"+fm(+c.monto)+"</div></div>";
+    });
+    ge("ventas-lista").innerHTML=html;
+  });
+}
+
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
+  ge("screen-"+id).classList.add("active");
+  document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){
+    b.classList.toggle("active",b.dataset.screen===id);
+  });
+  if(id==="socios")  renderSocios();
+  if(id==="ventas")  renderVentas();
+}
+
+function confirmarCobro(){
+  if(!_cobroPendiente) return;
+  var codigo=ge("cobrar-codigo").value.trim();
+  if(!codigo){ge("cobrar-error").textContent="Ingresa tu código";return;}
+  var t=TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
+  if(codigo!==t.codigo){ge("cobrar-error").textContent="Código incorrecto";return;}
+  DEUDAS[_cobroPendiente.socioId]=(DEUDAS[_cobroPendiente.socioId]||[]).filter(function(d){
+    return String(d.id)!==String(_cobroPendiente.deudaId);
+  });
+  GymDB.saveAllDeudas(DEUDAS);
+  GymDB.registrarCobro({
+    tipo:"deuda", socio_id:_cobroPendiente.socioId, socio_nombre:_cobroPendiente.socioNombre,
+    producto:_cobroPendiente.producto, monto:_cobroPendiente.monto,
+    vendedor_id:String(t.id), vendedor_nombre:t.nombre
+  });
+  ge("modal-cobrar-deuda").classList.remove("open");
+  _cobroPendiente=null;
+  mostrarToast("✓ Cobro registrado");
+  renderDetalle();
+}
+
 function renderSocios(){
   var q   =ge("soc-buscar").value.toLowerCase().trim();
   var list=SOCIOS.slice();
@@ -634,28 +694,26 @@ function confirmarCheckin(){
   ge("modal-checkin").classList.remove("open");
   renderInicio();
 }
-function _nextSocioId(){ if(!SOCIOS.length)return"001"; var mx=SOCIOS.reduce(function(m,s){var n=parseInt(s.id,10);return isNaN(n)?m:Math.max(m,n);},0),n=mx+1; return n<10?"00"+n:n<100?"0"+n:String(n); }
-function _calcVenc(){ var fi=ge("f-inicio").value,pl=ge("f-plan").value; if(fi&&PLAN_DIAS[pl]){ge("f-vence").value=addDays(fi,PLAN_DIAS[pl]);ge("f-vence").style.color="var(--lime)";} }
 function guardarSocio(){
   var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  var tel=ge("f-tel").value.trim();
-  if(!nombre||!ap){ alert("Nombre y apellido son requeridos"); return; }
-  if(!tel){ alert("El teléfono es requerido\nEl socio lo necesita para entrar a su perfil"); return; }
-  if(!id){ alert("Error: sin número de socio"); return; }
-  var fi=ge("f-inicio").value, plan=ge("f-plan").value, vence=ge("f-vence").value;
-  if(fi&&plan&&!vence&&PLAN_DIAS[plan]) vence=addDays(fi,PLAN_DIAS[plan]);
-  var prev=SOCIOS.find(function(x){return x.id===id;})||{};
-  var datos={id:id,nombre:nombre,apellido_paterno:ap,apellido_materno:ge("f-am").value.trim()||null,
-    numero:tel, numero_emergencia:ge("f-emerg").value.trim()||null,
-    correo:ge("f-correo").value.trim()||null, notas:ge("f-notas").value.trim()||null,
-    fecha_vencimiento:vence||null, fecha_inicio:fi||null, fecha_nacimiento:ge("f-nac").value||null,
-    plan:plan||null, sexo:ge("f-sexo").value||null,
-    visitas:prev.visitas||0, activo:prev.activo!==undefined?prev.activo:true,
-    abonos:prev.abonos||[], color:prev.color||"#C8F135"};
-  var btn=ge("btn-guardar-socio"); btn.disabled=true; btn.textContent="Guardando…";
-  GymDB.setSocio(datos);
-  SOCIOS=GymDB.getSocios();
-  setTimeout(function(){ btn.disabled=false; btn.textContent="Guardar"; mostrarToast("✓ Socio guardado"); showScreen("socios"); },1500);
+  if(!id||!nombre||!ap){alert("Número, nombre y apellido son requeridos");return;}
+  var datos={
+    id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
+    numero:ge("f-tel").value.trim(), numero_emergencia:ge("f-emerg").value.trim(),
+    correo:ge("f-correo").value.trim(), notas:ge("f-notas").value.trim(),
+    fecha_vencimiento:ge("f-vence").value, fecha_inicio:ge("f-inicio").value,
+    fecha_nacimiento:ge("f-nac").value, plan:ge("f-plan").value,
+    sexo:ge("f-sexo").value, visitas:0, activo:true, abonos:[]
+  };
+  var idx=SOCIOS.findIndex(function(x){return x.id===id;});
+  if(idx>-1){
+    datos.visitas=SOCIOS[idx].visitas; datos.activo=SOCIOS[idx].activo; datos.abonos=SOCIOS[idx].abonos||[];
+    SOCIOS[idx]=datos;
+  } else {
+    SOCIOS.push(datos);
+  }
+  GymDB.saveSocios(SOCIOS);
+  showScreen("socios");
 }
 
 // ── DETALLE SOCIO ─────────────────────────────────────────────
@@ -665,7 +723,8 @@ function renderDetalle(){
   ge("det-nombre").textContent=s.nombre+" "+s.apellido_paterno;
   ge("det-sub").textContent="#"+s.id+" · "+s.plan;
   if(detTab==="membresia") renderMembresia(s);
-  else renderInfoGeneral(s);
+  else if(detTab==="info") renderInfoGeneral(s);
+  else if(detTab==="seguimiento") renderTabSeguimiento(s);
 }
 
 // ── TAB: MEMBRESÍA Y DEUDAS ───────────────────────────────────
@@ -726,13 +785,15 @@ function renderMembresia(s){
     html+="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin deudas ✓</div>";
   } else {
     deudas.forEach(function(d){
-      html+="<div class='card naranja' style='display:flex;align-items:center;gap:10px'>";
+      html+="<div class='card' style='display:flex;align-items:center;gap:10px;border:1px solid rgba(255,59,48,.25)'>";
       html+="<div style='flex:1'><div style='font-weight:600;font-size:13px'>"+d.producto+"</div>";
-      html+="<div style='font-size:11px;color:var(--muted)'>"+fFecha(d.fecha)+" · "+fm(d.total)+"</div></div>";
-      html+="<button class='btn bg2b bsm' data-del-deuda='"+d.id+"' title='Marcar como pagado'>&#10003; Pagado</button>";
+      html+="<div style='font-size:11px;color:var(--muted)'>"+fFecha(d.fecha)+"</div></div>";
+      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:var(--red)'>"+fm(d.total)+"</div>";
+      html+="<span style='font-size:11px;font-weight:700;color:var(--red);background:rgba(255,59,48,.12);padding:3px 8px;border-radius:6px'>Debe</span>";
+      html+="<button class='btn bsm' style='background:rgba(255,59,48,.12);color:var(--red);border:1px solid rgba(255,59,48,.3);font-size:16px;padding:6px 10px' data-cobrar-deuda='"+d.id+"' data-prod='"+d.producto+"' data-monto='"+d.total+"'>🗑</button>";
       html+="</div>";
     });
-    html+="<div style='text-align:right;font-size:12px;color:var(--orange);margin-top:4px'>Total: "+fm(totalD)+"</div>";
+    html+="<div style='text-align:right;font-size:12px;color:var(--red);margin-top:4px'>Total debe: "+fm(totalD)+"</div>";
   }
 
   // Agregar producto
@@ -790,20 +851,82 @@ function renderMembresia(s){
     renderDetalle();
   });
 
-  ge("det-content").querySelectorAll("[data-del-deuda]").forEach(function(btn){
+  ge("det-content").querySelectorAll("[data-cobrar-deuda]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var deuId=this.dataset.delDeuda;
-      pedirPin(function(){
-        var arr=DEUDAS[s.id]||[];
-        DEUDAS[s.id]=arr.filter(function(d){return d.id!==deuId;});
-        GymDB.saveAllDeudas(DEUDAS);
-        renderDetalle();
-      });
+      _cobroPendiente={socioId:s.id,socioNombre:s.nombre+" "+s.apellido_paterno,
+        deudaId:this.dataset.cobrarDeuda,producto:this.dataset.prod,monto:+this.dataset.monto};
+      ge("cobrar-info").textContent="Cobrar "+_cobroPendiente.producto+" · "+fm(_cobroPendiente.monto)+" de "+_cobroPendiente.socioNombre;
+      ge("cobrar-codigo").value=""; ge("cobrar-error").textContent="";
+      ge("modal-cobrar-deuda").classList.add("open");
     });
   });
 }
 
 // ── TAB: INFORMACIÓN GENERAL ──────────────────────────────────
+
+function renderTabSeguimiento(s){
+  var html="<div class='sec' style='padding-bottom:20px'>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Nuevo registro</div>";
+  html+="<div class='card' style='margin-bottom:14px'>";
+  html+="<div class='f2'>";
+  html+="<div class='fr'><label>Peso (kg)</label><input type='number' id='seg-peso' placeholder='75.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<div class='fr'><label>IMC</label><input type='number' id='seg-imc' placeholder='22.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="</div><div class='f2' style='margin-top:8px'>";
+  html+="<div class='fr'><label>Músculo (kg)</label><input type='number' id='seg-musculo' placeholder='32.0' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<div class='fr'><label>% Grasa</label><input type='number' id='seg-grasa' placeholder='18.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="</div><div class='fr' style='margin-top:8px'><label>Fecha de medición</label><input type='date' id='seg-fecha' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<button class='btn bl bfull' style='margin-top:12px' id='btn-guardar-seg'>Guardar medidas</button>";
+  html+="</div>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial</div>";
+  html+="<div id='seg-historial'><div style='font-size:13px;color:var(--muted)'>Cargando…</div></div>";
+  html+="</div>";
+  ge("det-content").innerHTML=html;
+  ge("seg-fecha").value=new Date().toISOString().slice(0,10);
+  GymDB.getSeguimiento(s.id, function(hist){
+    if(hist.length){
+      var ul=hist[0];
+      if(ul.peso)    ge("seg-peso").value=ul.peso;
+      if(ul.musculo) ge("seg-musculo").value=ul.musculo;
+      if(ul.imc)     ge("seg-imc").value=ul.imc;
+      if(ul.grasa)   ge("seg-grasa").value=ul.grasa;
+    }
+    if(!hist.length){
+      ge("seg-historial").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
+    } else {
+      var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      var hhtml="";
+      hist.slice(0,12).forEach(function(h){
+        var d=new Date((h.fecha||h.mes+"-01")+"T00:00:00");
+        var mn=meses[d.getMonth()]+" "+d.getFullYear();
+        hhtml+="<div class='card' style='margin-bottom:8px'>";
+        hhtml+="<div style='font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px'>"+mn+"</div>";
+        hhtml+="<div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center'>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:#4ECDC4'>"+(h.peso||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--green)'>"+(h.musculo||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--lime)'>"+(h.imc||"—")+"</div><div style='font-size:10px;color:var(--muted)'>IMC</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--orange)'>"+(h.grasa||"—")+"</div><div style='font-size:10px;color:var(--muted)'>% grasa</div></div>";
+        hhtml+="</div></div>";
+      });
+      ge("seg-historial").innerHTML=hhtml;
+    }
+  });
+  ge("btn-guardar-seg").addEventListener("click",function(){
+    var peso   =parseFloat(ge("seg-peso").value)||null;
+    var musculo=parseFloat(ge("seg-musculo").value)||null;
+    var imc    =parseFloat(ge("seg-imc").value)||null;
+    var grasa  =parseFloat(ge("seg-grasa").value)||null;
+    var fecha  =ge("seg-fecha").value||new Date().toISOString().slice(0,10);
+    if(!peso&&!musculo&&!imc&&!grasa){alert("Ingresa al menos un valor");return;}
+    GymDB.saveSeguimiento(s.id,fecha.slice(0,7),peso,musculo,imc,grasa,fecha,function(){
+      if(peso)    s.peso=peso;
+      if(musculo) s.musculo=musculo;
+      GymDB.setSocio(s);
+      mostrarToast("✓ Medidas guardadas");
+      renderTabSeguimiento(s);
+    });
+  });
+}
+
 function renderInfoGeneral(s){
   var html="<div class='sec' style='padding-bottom:16px'>";
   html+="<div class='f2' style='margin-bottom:12px'>";
@@ -950,6 +1073,13 @@ document.addEventListener("DOMContentLoaded",function(){
     if(ov) ov.style.display='none';
     recargarDatos();
 
+  // Modal cobrar deuda
+  ge("cobrar-cancelar").addEventListener("click",function(){ge("modal-cobrar-deuda").classList.remove("open");});
+  ge("cobrar-ok").addEventListener("click",confirmarCobro);
+  ge("cobrar-codigo").addEventListener("keydown",function(e){if(e.key==="Enter")confirmarCobro();});
+  ge("modal-cobrar-deuda").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+  ge("btn-sync-ventas").addEventListener("click",function(){renderVentas();mostrarToast("↻ Actualizado");});
+
   // Check-in
   ge("btn-checkin").addEventListener("click", abrirCheckin);
   ge("ci-input").addEventListener("input", previewCheckin);
@@ -980,17 +1110,14 @@ document.addEventListener("DOMContentLoaded",function(){
   // Sort y búsqueda
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("soc-buscar").addEventListener("input",renderSocios);
-  ge("btn-sync-tr").addEventListener("click",function(){var b=this;b.textContent="…";b.disabled=true;GymDB.init().then(function(){recargarDatos();renderSocios();b.textContent="↻";b.disabled=false;mostrarToast("↻ Actualizado");});});
   ge("btn-nuevo-socio").addEventListener("click",function(){
-    socioActual=null; ge("form-titulo").textContent="Nuevo Socio";
-    ge("f-id").value=_nextSocioId(); ge("f-id-hint").textContent="auto";
-    ge("f-inicio").value=new Date().toISOString().slice(0,10);
-    ["f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
-    ge("f-plan").value=""; ge("f-vence").value=""; ge("f-nac").value=""; ge("f-sexo").value="";
-    ge("f-vence").style.color="var(--muted)"; showScreen("form");
+    socioActual=null;
+    ge("form-titulo").textContent="Nuevo Socio";
+    ["f-id","f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
+    ge("f-vence").value=""; ge("f-inicio").value=""; ge("f-nac").value="";
+    ge("f-plan").value=""; ge("f-sexo").value="";
+    showScreen("form");
   });
-  ge("f-plan").addEventListener("change",_calcVenc);
-  ge("f-inicio").addEventListener("change",_calcVenc);
   ge("btn-orden-dir").addEventListener("click",function(){
     ordenAsc=!ordenAsc;
     this.textContent=ordenAsc?"↑":"↓";
@@ -1068,5 +1195,37 @@ function renderPantallaActual(){
   }
 }
 </script>
+
+<!-- ═══ SCREEN: VENTAS / COMISIONES ════════════════════════════ -->
+<div class="screen" id="screen-ventas">
+  <div class="hdr">
+    <div><h1>Mis Ventas</h1></div>
+    <div class="hdr-r"><button class="btn bd bsm" id="btn-sync-ventas">↻</button></div>
+  </div>
+  <div class="sec" style="padding-bottom:20px">
+    <div id="ventas-resumen" style="margin-bottom:16px"></div>
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Historial</div>
+    <div id="ventas-lista"></div>
+  </div>
+  <div class="nav-ph"></div>
+</div>
+
+<!-- ═══ MODAL COBRAR DEUDA ─── ya está arriba ══════════════════ -->
+<div class="modal-ov" id="modal-cobrar-deuda">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <h2>Cobrar producto</h2>
+    <div id="cobrar-info" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+    <div class="fr"><label>Tu código de validación</label>
+      <input type="text" id="cobrar-codigo" placeholder="Tu código" maxlength="20"
+        style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+    </div>
+    <div id="cobrar-error" style="font-size:12px;color:var(--red);min-height:16px;margin:8px 0"></div>
+    <div class="mbtns">
+      <button id="cobrar-cancelar" class="btn bd" style="flex:1;padding:14px">Cancelar</button>
+      <button id="cobrar-ok" class="btn bl" style="flex:1;padding:14px">Confirmar cobro</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

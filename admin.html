@@ -219,6 +219,7 @@ textarea{resize:vertical;min-height:70px;}
   <div class="tabs">
     <button class="tab active" data-det="membresia">Membresía y Deudas</button>
     <button class="tab" data-det="info">Información</button>
+    <button class="tab" data-det="seguimiento">Seguimiento</button>
   </div>
   <div id="det-content"></div>
   <div class="nav-ph"></div>
@@ -351,8 +352,8 @@ textarea{resize:vertical;min-height:70px;}
       <button class="btn bd bsm" id="ci-tab-scan" style="flex:1;justify-content:center">&#128247; Escáner</button>
     </div>
     <div id="ci-panel-cod">
-      <div class="fr"><label>Número de socio o código QR</label>
-        <input type="text" id="ci-input" placeholder="001 o GM-001-XXXXXX" autocomplete="off">
+      <div class="fr"><label>Número de socio</label>
+        <input type="text" id="ci-input" placeholder="Número de socio (ej: 007)" autocomplete="off">
       </div>
       <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px" id="ci-err"></div>
       <div style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);min-height:48px;margin-bottom:12px" id="ci-preview"><span style="font-size:12px;color:var(--muted)">Ingresa el código…</span></div>
@@ -654,6 +655,31 @@ function confirmarCI(){
 }
 
 // ── SOCIOS ────────────────────────────────────────────────────
+// Código de validación del admin (puedes cambiarlo)
+var ADMIN_COD_COBRO = "ADMIN2026";
+
+function confirmarCobro(){
+  if(!_cobroPendiente) return;
+  var codigo=ge("cobrar-codigo").value.trim();
+  if(!codigo){ge("cobrar-error").textContent="Ingresa el código";return;}
+  if(codigo.toUpperCase()!==ADMIN_COD_COBRO){ge("cobrar-error").textContent="Código incorrecto";return;}
+  // Eliminar deuda
+  DEUDAS[_cobroPendiente.socioId]=(DEUDAS[_cobroPendiente.socioId]||[]).filter(function(d){
+    return String(d.id)!==String(_cobroPendiente.deudaId);
+  });
+  GymDB.saveAllDeudas(DEUDAS);
+  // Registrar cobro
+  GymDB.registrarCobro({
+    tipo:"deuda", socio_id:_cobroPendiente.socioId, socio_nombre:_cobroPendiente.socioNombre,
+    producto:_cobroPendiente.producto, monto:_cobroPendiente.monto,
+    vendedor_id:"admin", vendedor_nombre:"Administrador"
+  });
+  ge("modal-cobrar-deuda").classList.remove("open");
+  _cobroPendiente=null;
+  mostrarToast("✓ Cobro registrado");
+  renderDetalle();
+}
+
 function renderSocios(){
   var q=ge("soc-buscar").value.toLowerCase().trim();
   var list=SOCIOS.slice();
@@ -700,7 +726,8 @@ function renderDetalle(){
   ge("det-nombre").textContent=s.nombre+" "+s.apellido_paterno;
   ge("det-sub").textContent="#"+s.id+" · "+s.plan;
   if(detTab==="membresia") renderTabMembresia(s);
-  else renderTabInfo(s);
+  else if(detTab==="info") renderTabInfo(s);
+  else if(detTab==="seguimiento") renderTabSeguimiento(s);
 }
 
 function renderTabMembresia(s){
@@ -743,12 +770,13 @@ function renderTabMembresia(s){
   if(!deudas.length) html+="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin deudas ✓</div>";
   else{
     deudas.forEach(function(d){
-      html+="<div class='card naranja' style='display:flex;align-items:center;gap:10px;margin-bottom:6px'>";
+      html+="<div class='card' style='display:flex;align-items:center;gap:10px;margin-bottom:6px;border:1px solid rgba(255,59,48,.25)'>";
       html+="<div style='flex:1'><div style='font-weight:600;font-size:13px'>"+d.producto+"</div><div style='font-size:11px;color:var(--muted)'>"+fF(d.fecha)+"</div></div>";
-      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:var(--orange)'>"+fm(d.total)+"</div>";
-      html+="<button class='btn bsm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.4);font-size:11px' data-pag-deuda='"+d.id+"'>Cobrar</button></div>";
+      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:var(--red)'>"+fm(d.total)+"</div>";
+      html+="<span style='font-size:11px;font-weight:700;color:var(--red);background:rgba(255,59,48,.12);padding:3px 8px;border-radius:6px'>Debe</span>";
+      html+="<button class='btn bsm' style='background:rgba(255,59,48,.12);color:var(--red);border:1px solid rgba(255,59,48,.3);font-size:16px;padding:6px 10px' data-cobrar-deuda='"+d.id+"' data-prod='"+d.producto+"' data-monto='"+d.total+"'>🗑</button></div>";
     });
-    html+="<div style='text-align:right;font-size:12px;color:var(--orange);margin-top:4px'>Total: "+fm(totalD)+"</div>";
+    html+="<div style='text-align:right;font-size:12px;color:var(--red);margin-top:4px'>Total debe: "+fm(totalD)+"</div>";
   }
   html+="<div style='margin-top:12px'><button class='btn bd bsm' id='btn-add-prod' style='width:100%;justify-content:center'>+ Agregar producto</button></div>";
   html+="</div>";
@@ -756,13 +784,87 @@ function renderTabMembresia(s){
 
   ge("btn-renovar").addEventListener("click",function(){abrirModalPago(s);});
   ge("btn-add-prod").addEventListener("click",function(){abrirModalProdSoc(s);});
-  ge("det-content").querySelectorAll("[data-pag-deuda]").forEach(function(btn){
+  ge("det-content").querySelectorAll("[data-cobrar-deuda]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var did=this.dataset.pagDeuda;
-      if(!confirm("¿Marcar como pagado?")) return;
-      DEUDAS[s.id]=(DEUDAS[s.id]||[]).filter(function(d){return d.id!==did;});
-      GymDB.saveAllDeudas(DEUDAS);
-      renderDetalle();
+      _cobroPendiente={socioId:s.id,socioNombre:s.nombre+" "+s.apellido_paterno,
+        deudaId:this.dataset.cobrarDeuda,producto:this.dataset.prod,monto:+this.dataset.monto};
+      ge("cobrar-info").textContent="Cobrar "+_cobroPendiente.producto+" · "+fm(_cobroPendiente.monto)+" de "+_cobroPendiente.socioNombre;
+      ge("cobrar-codigo").value=""; ge("cobrar-error").textContent="";
+      ge("modal-cobrar-deuda").classList.add("open");
+    });
+  });
+}
+
+
+// ── TAB: SEGUIMIENTO ──────────────────────────────────────────
+function renderTabSeguimiento(s){
+  var html="<div class='sec' style='padding-bottom:20px'>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Nuevo registro</div>";
+  html+="<div class='card' style='margin-bottom:14px'>";
+  html+="<div class='f2'>";
+  html+="<div class='fr'><label>Peso (kg)</label><input type='number' id='seg-peso' placeholder='75.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<div class='fr'><label>IMC</label><input type='number' id='seg-imc' placeholder='22.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="</div>";
+  html+="<div class='f2' style='margin-top:8px'>";
+  html+="<div class='fr'><label>Músculo (kg)</label><input type='number' id='seg-musculo' placeholder='32.0' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<div class='fr'><label>% Grasa</label><input type='number' id='seg-grasa' placeholder='18.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="</div>";
+  html+="<div class='fr' style='margin-top:8px'><label>Fecha de medición</label><input type='date' id='seg-fecha' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
+  html+="<button class='btn bl bfull' style='margin-top:12px' id='btn-guardar-seg'>Guardar medidas</button>";
+  html+="</div>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial</div>";
+  html+="<div id='seg-historial'><div style='font-size:13px;color:var(--muted)'>Cargando…</div></div>";
+  html+="</div>";
+  ge("det-content").innerHTML=html;
+
+  // Fecha por defecto: hoy
+  ge("seg-fecha").value=new Date().toISOString().slice(0,10);
+
+  // Cargar historial
+  GymDB.getSeguimiento(s.id, function(hist){
+    // Prellenar con último registro
+    if(hist.length){
+      var ul=hist[0];
+      if(ul.peso)    ge("seg-peso").value=ul.peso;
+      if(ul.musculo) ge("seg-musculo").value=ul.musculo;
+      if(ul.imc)     ge("seg-imc").value=ul.imc;
+      if(ul.grasa)   ge("seg-grasa").value=ul.grasa;
+    }
+    if(!hist.length){
+      ge("seg-historial").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
+    } else {
+      var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      var hhtml="";
+      hist.slice(0,12).forEach(function(h){
+        var d=new Date(h.fecha||h.mes+"-01"); var mn=meses[d.getMonth()]+" "+d.getFullYear();
+        hhtml+="<div class='card' style='margin-bottom:8px'>";
+        hhtml+="<div style='font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px'>"+mn+"</div>";
+        hhtml+="<div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center'>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:#4ECDC4'>"+(h.peso||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--green)'>"+(h.musculo||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--lime)'>"+(h.imc||"—")+"</div><div style='font-size:10px;color:var(--muted)'>IMC</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--orange)'>"+(h.grasa||"—")+"</div><div style='font-size:10px;color:var(--muted)'>% grasa</div></div>";
+        hhtml+="</div></div>";
+      });
+      ge("seg-historial").innerHTML=hhtml;
+    }
+  });
+
+  ge("btn-guardar-seg").addEventListener("click",function(){
+    var peso   =parseFloat(ge("seg-peso").value)||null;
+    var musculo=parseFloat(ge("seg-musculo").value)||null;
+    var imc    =parseFloat(ge("seg-imc").value)||null;
+    var grasa  =parseFloat(ge("seg-grasa").value)||null;
+    var fecha  =ge("seg-fecha").value||new Date().toISOString().slice(0,10);
+    if(!peso&&!musculo&&!imc&&!grasa){alert("Ingresa al menos un valor");return;}
+    var mes=fecha.slice(0,7);
+    GymDB.saveSeguimiento(s.id,mes,peso,musculo,imc,grasa,fecha,function(){
+      // Actualizar peso/musculo en el registro del socio
+      if(peso)    s.peso=peso;
+      if(musculo) s.musculo=musculo;
+      GymDB.setSocio(s);
+      mostrarToast("✓ Medidas guardadas");
+      renderTabSeguimiento(s);
     });
   });
 }
@@ -1196,6 +1298,12 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("ci-tab-scan").addEventListener("click",function(){ge("ci-panel-scan").style.display="block";ge("ci-panel-cod").style.display="none";this.style.background="var(--lime)";this.style.color="#080808";ge("ci-tab-cod").className="btn bsm";ge("ci-tab-cod").style="";});
 
   // Socios
+  // Modal cobrar deuda
+  ge("cobrar-cancelar").addEventListener("click",function(){ge("modal-cobrar-deuda").classList.remove("open");});
+  ge("cobrar-ok").addEventListener("click",confirmarCobro);
+  ge("cobrar-codigo").addEventListener("keydown",function(e){if(e.key==="Enter")confirmarCobro();});
+  ge("modal-cobrar-deuda").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+
   ge("soc-buscar").addEventListener("input",renderSocios);
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("btn-orden-dir").addEventListener("click",function(){ordenAsc=!ordenAsc;this.textContent=ordenAsc?"↑":"↓";renderSocios();});
@@ -1276,5 +1384,23 @@ function renderPantallaActual(){
   }
 }
 </script>
+
+<!-- MODAL: COBRAR DEUDA -->
+<div class="modal-ov" id="modal-cobrar-deuda">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <h2>Cobrar producto</h2>
+    <div id="cobrar-info" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+    <div class="fr"><label>Código de validación</label>
+      <input type="text" id="cobrar-codigo" placeholder="Código admin" maxlength="20"
+        style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+    </div>
+    <div id="cobrar-error" style="font-size:12px;color:var(--red);min-height:16px;margin:8px 0"></div>
+    <div class="mbtns">
+      <button id="cobrar-cancelar" class="btn bd" style="flex:1;padding:14px">Cancelar</button>
+      <button id="cobrar-ok" class="btn bl" style="flex:1;padding:14px">Confirmar cobro</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

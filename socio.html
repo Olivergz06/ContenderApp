@@ -423,9 +423,7 @@ input:focus,select:focus{border-color:var(--lime);}
     <div><h1>Seguimiento</h1></div>
   </div>
   <div class="sec" style="padding-bottom:20px">
-
-    <!-- Registro del mes actual -->
-    <span class="lbl">Registrar este mes</span>
+    <span class="lbl">Registrar medidas</span>
     <div class="card" style="margin-bottom:14px">
       <div class="f2">
         <div class="fr">
@@ -434,18 +432,32 @@ input:focus,select:focus{border-color:var(--lime);}
             style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
         </div>
         <div class="fr">
+          <label>IMC</label>
+          <input type="number" id="seg-imc" placeholder="22.5" inputmode="decimal" step="0.1"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="f2" style="margin-top:8px">
+        <div class="fr">
           <label>Músculo (kg)</label>
           <input type="number" id="seg-musculo" placeholder="32.0" inputmode="decimal" step="0.1"
             style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
         </div>
+        <div class="fr">
+          <label>% Grasa</label>
+          <input type="number" id="seg-grasa" placeholder="18.5" inputmode="decimal" step="0.1"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+        </div>
       </div>
-      <button id="btn-guardar-seg" class="btn btn-lime" style="width:100%;padding:13px;margin-top:10px;font-size:15px">Guardar medidas del mes</button>
+      <div class="fr" style="margin-top:8px">
+        <label>Fecha de medición</label>
+        <input type="date" id="seg-fecha"
+          style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+      </div>
+      <button id="btn-guardar-seg" class="btn btn-lime" style="width:100%;padding:13px;margin-top:12px;font-size:15px">Guardar medidas</button>
     </div>
-
-    <!-- Historial -->
     <span class="lbl">Historial</span>
     <div id="seg-historial"></div>
-
   </div>
   <div class="nav-ph"></div>
 </div>
@@ -968,28 +980,34 @@ function renderProximaClase(){
 
 // ── SEGUIMIENTO MENSUAL ───────────────────────────────────────
 function renderSeguimiento(){
-  // Cargar historial del socio desde tabla seguimiento_socio
+  ge("seg-fecha").value = new Date().toISOString().slice(0,10);
   GymDB.getSeguimiento(SOCIO_ID, function(historial){
-    // Prellenar con el último registro si es de este mes
-    var mesActual = new Date().toISOString().slice(0,7); // YYYY-MM
-    var ultimo = historial.find(function(h){ return h.mes===mesActual; });
-    if(ultimo){
-      ge("seg-peso").value = ultimo.peso||"";
-      ge("seg-musculo").value = ultimo.musculo||"";
+    // Prellenar con el último registro
+    if(historial.length){
+      var ul=historial[0];
+      ge("seg-peso").value    = ul.peso||"";
+      ge("seg-musculo").value = ul.musculo||"";
+      ge("seg-imc").value     = ul.imc||"";
+      ge("seg-grasa").value   = ul.grasa||"";
+      if(ul.fecha) ge("seg-fecha").value = ul.fecha;
     }
-    // Render historial
+    // Historial
+    var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
     var html="";
     if(!historial.length){
       html="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
     } else {
-      historial.slice().sort(function(a,b){return b.mes.localeCompare(a.mes);}).forEach(function(h){
-        var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        var parts=h.mes.split("-"), mesNom=meses[parseInt(parts[1],10)-1]+" "+parts[0];
-        html+="<div class='card' style='display:flex;align-items:center;gap:12px;margin-bottom:8px'>";
-        html+="<div style='flex:1'><div style='font-weight:700;font-size:13px'>"+mesNom+"</div></div>";
-        if(h.peso)    html+="<div style='text-align:center'><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:#4ECDC4\">"+h.peso+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
-        if(h.musculo) html+="<div style='text-align:center'><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green)\">"+h.musculo+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
-        html+="</div>";
+      historial.slice(0,12).forEach(function(h){
+        var d=new Date((h.fecha||h.mes+"-01")+"T00:00:00");
+        var mn=meses[d.getMonth()]+" "+d.getFullYear();
+        html+="<div class='card' style='margin-bottom:8px'>";
+        html+="<div style='font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px'>"+mn+"</div>";
+        html+="<div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center'>";
+        html+="<div><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:#4ECDC4\">"+(h.peso||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        html+="<div><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green)\">"+(h.musculo||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        html+="<div><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--lime)\">"+(h.imc||"—")+"</div><div style='font-size:10px;color:var(--muted)'>IMC</div></div>";
+        html+="<div><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--orange)\">"+(h.grasa||"—")+"</div><div style='font-size:10px;color:var(--muted)'>% grasa</div></div>";
+        html+="</div></div>";
       });
     }
     ge("seg-historial").innerHTML=html;
@@ -997,14 +1015,17 @@ function renderSeguimiento(){
 }
 
 document.getElementById("btn-guardar-seg").addEventListener("click",function(){
-  var peso   = parseFloat(ge("seg-peso").value)||null;
-  var musculo= parseFloat(ge("seg-musculo").value)||null;
-  if(!peso&&!musculo){ alert("Ingresa al menos un valor"); return; }
-  var mes = new Date().toISOString().slice(0,7);
-  GymDB.saveSeguimiento(SOCIO_ID, mes, peso, musculo, function(){
-    // Actualizar stats en inicio
-    if(peso)    { ge("st-peso").textContent=peso+"kg"; }
-    if(musculo) { ge("st-musculo").textContent=musculo+"kg"; }
+  var peso    = parseFloat(ge("seg-peso").value)||null;
+  var musculo = parseFloat(ge("seg-musculo").value)||null;
+  var imc     = parseFloat(ge("seg-imc").value)||null;
+  var grasa   = parseFloat(ge("seg-grasa").value)||null;
+  var fecha   = ge("seg-fecha").value||new Date().toISOString().slice(0,10);
+  if(!peso&&!musculo&&!imc&&!grasa){ alert("Ingresa al menos un valor"); return; }
+  var mes = fecha.slice(0,7);
+  GymDB.saveSeguimiento(SOCIO_ID, mes, peso, musculo, imc, grasa, fecha, function(){
+    // Actualizar stats de inicio con el último registro
+    if(ge("st-peso"))    ge("st-peso").textContent    = (peso||"—")+"kg";
+    if(ge("st-musculo")) ge("st-musculo").textContent = (musculo||"—")+"kg";
     mostrarToast("✓ Medidas guardadas");
     renderSeguimiento();
   });
@@ -1204,16 +1225,12 @@ function renderCard(cl, esManana, ahora){
   html += "</div><div class='clase-act'>";
 
   if(inscrito){
-    if(esManana){
-      html += "<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"'>Cancelar</button>";
-    } else {
-      html += "<span class='pill pg'>Inscrito ✓</span>";
-    }
+    // Inscrito: puede cancelar en cualquier día
+    html += "<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"'>Cancelar</button>";
   } else if(lleno){
     html += "<span class='pill pm'>Lleno</span>";
-  } else if(!esManana){
-    html += "<span class='pill pm' style='font-size:10px'>Hoy presencial</span>";
-  } else if(!claseHoyTermino){
+  } else if(esManana && !claseHoyTermino){
+    // Mañana pero la de hoy aún no termina
     var msg="Puedes agendar cuando termine la sesión de hoy ("+cl.hora+" hrs + 1 hora)";
     html += "<button class='btn btn-sm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.3);font-size:10px' data-no-inscribir='"+encodeURIComponent(msg)+"'>¿Cuándo?</button>";
   } else {

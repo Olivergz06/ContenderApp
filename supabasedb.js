@@ -261,19 +261,47 @@ var GymDB = (function () {
       post('cuentas',cuenta).then(function(r){if(r&&!r._error&&Array.isArray(r)&&r[0])cuenta.id=r[0].id;});
     },
 
+    // ── COBROS / VENTAS (para comisiones) ──────────────────────
+    registrarCobro: function(cobro) {
+      // cobro = {tipo, socio_id, socio_nombre, producto, monto, vendedor_id, vendedor_nombre, notas}
+      var data = {
+        tipo:            cobro.tipo||'deuda',
+        socio_id:        cobro.socio_id||null,
+        socio_nombre:    cobro.socio_nombre||null,
+        producto:        cobro.producto,
+        monto:           cobro.monto,
+        fecha:           new Date().toISOString().slice(0,10),
+        vendedor_id:     cobro.vendedor_id||null,
+        vendedor_nombre: cobro.vendedor_nombre||null,
+        notas:           cobro.notas||null
+      };
+      return post('cobros', data);
+    },
+
+    getCobros: function(vendedorId) {
+      var q = vendedorId ? 'vendedor_id=eq.'+vendedorId+'&order=fecha.desc' : 'order=fecha.desc';
+      return get('cobros', q);
+    },
+
     // ── SEGUIMIENTO MENSUAL ─────────────────────────────────────
     getSeguimiento: function(socioId, callback) {
-      get('seguimiento_socio','select=*&socio_id=eq.'+socioId+'&order=mes.desc')
+      get('seguimiento_socio','select=*&socio_id=eq.'+socioId+'&order=fecha.desc,mes.desc')
         .then(function(r){ callback(Array.isArray(r)?r:[]); });
     },
-    saveSeguimiento: function(socioId, mes, peso, musculo, callback) {
-      // Upsert: si ya existe el mes, actualizar; si no, insertar
+    saveSeguimiento: function(socioId, mes, peso, musculo, imc, grasa, fecha, callback) {
+      var hoy = fecha || new Date().toISOString().slice(0,10);
+      var data = {
+        socio_id: socioId, mes: mes,
+        peso: peso||null, musculo: musculo||null,
+        imc: imc||null, grasa: grasa||null,
+        fecha: hoy
+      };
       get('seguimiento_socio','select=id&socio_id=eq.'+socioId+'&mes=eq.'+mes)
         .then(function(r){
           if(Array.isArray(r)&&r.length>0){
-            pat('seguimiento_socio','id=eq.'+r[0].id,{peso:peso,musculo:musculo});
+            pat('seguimiento_socio','id=eq.'+r[0].id, data);
           } else {
-            post('seguimiento_socio',{socio_id:socioId,mes:mes,peso:peso,musculo:musculo});
+            post('seguimiento_socio', data);
           }
           if(callback) callback();
         });
