@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#080808">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>GymPro · Socio</title>
+<title>Contender Club · Socio</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="supabasedb.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -337,7 +337,7 @@ input:focus,select:focus{border-color:var(--lime);}
 <!-- HEADER -->
 <div class="hdr">
   <div style="flex:1;min-width:0">
-    <div class="hdr-nombre">GymPro</div>
+    <div class="hdr-nombre" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div>
     <!-- Dropdown de perfil -->
     <select id="sel-perfil" style="background:transparent;border:none;color:var(--lime);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;outline:none;padding:0;margin-top:2px;width:100%;cursor:pointer;-webkit-appearance:none"></select>
   </div>
@@ -1133,53 +1133,41 @@ var DIAS_SEMANA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 // ── RENDER: CLASES DE HOY Y MAÑANA ───────────────────────────
 function renderClasesDia(){
-  var ahora   = new Date();
-  var hoy     = new Date(); hoy.setHours(0,0,0,0);
-  var manana  = new Date(hoy); manana.setDate(hoy.getDate()+1);
-  var nomHoy    = DIAS_SEMANA[hoy.getDay()];
-  var nomManana = DIAS_SEMANA[manana.getDay()];
+  var ahora      = new Date();
+  var hoy        = new Date(); hoy.setHours(0,0,0,0);
+  var manana     = new Date(hoy); manana.setDate(hoy.getDate()+1);
+  var fechaHoy   = hoy.toISOString().slice(0,10);
+  var fechaMañana= manana.toISOString().slice(0,10);
+  var nomHoy     = DIAS_SEMANA[hoy.getDay()];
+  var nomManana  = DIAS_SEMANA[manana.getDay()];
   var c = ge("lista-clases");
   var html = "";
 
-  // ── HOY ───────────────────────────────────────────────────
   var hoyClases = CLASES.filter(function(cl){ return cl.dias.indexOf(nomHoy)>-1; });
   html += "<div class='sec-lbl' style='margin-bottom:8px'>Hoy · "+hoy.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"})+"</div>";
-  if(!hoyClases.length){
-    html += "<div class='empty' style='padding:16px 0'><p>Sin clases hoy</p></div>";
-  } else {
-    hoyClases.forEach(function(cl){ html += renderCard(cl, false, ahora); });
-  }
+  if(!hoyClases.length) html += "<div class='empty' style='padding:16px 0'><p>Sin clases hoy</p></div>";
+  else hoyClases.forEach(function(cl){ html += renderCard(cl, false, ahora, fechaHoy); });
 
-  // ── MAÑANA ────────────────────────────────────────────────
   var mananaClases = CLASES.filter(function(cl){ return cl.dias.indexOf(nomManana)>-1; });
   html += "<div class='sec-lbl' style='margin-top:16px;margin-bottom:8px'>Mañana · "+manana.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"})+"</div>";
-  if(!mananaClases.length){
-    html += "<div class='empty' style='padding:16px 0'><p>Sin clases mañana</p></div>";
-  } else {
-    mananaClases.forEach(function(cl){ html += renderCard(cl, true, ahora); });
-  }
+  if(!mananaClases.length) html += "<div class='empty' style='padding:16px 0'><p>Sin clases mañana</p></div>";
+  else mananaClases.forEach(function(cl){ html += renderCard(cl, true, ahora, fechaMañana); });
 
   c.innerHTML = html;
 
   c.querySelectorAll("[data-inscribir]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var id=+this.dataset.inscribir;
-      GymDB.inscribirSocio(id, SOCIO_ID);
-      INSCRITOS=GymDB.getAllInscritos();
-      renderClasesDia(); renderMisClases();
+      GymDB.inscribirSocio(+this.dataset.inscribir, SOCIO_ID, this.dataset.fecha);
+      INSCRITOS=GymDB.getAllInscritos(); renderClasesDia(); renderMisClases();
     });
   });
   c.querySelectorAll("[data-no-inscribir]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      mostrarMsgClase(decodeURIComponent(this.dataset.noInscribir));
-    });
+    btn.addEventListener("click",function(){ mostrarMsgClase(decodeURIComponent(this.dataset.noInscribir)); });
   });
   c.querySelectorAll("[data-cancel]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var id=+this.dataset.cancel;
-      GymDB.desinscribirSocio(id, SOCIO_ID);
-      INSCRITOS=GymDB.getAllInscritos();
-      renderClasesDia(); renderMisClases();
+      GymDB.desinscribirSocio(+this.dataset.cancel, SOCIO_ID, this.dataset.fecha);
+      INSCRITOS=GymDB.getAllInscritos(); renderClasesDia(); renderMisClases();
     });
   });
 }
@@ -1199,8 +1187,10 @@ function mostrarMsgClase(msg){
 }
 
 // ── RENDER: TARJETA DE CLASE ──────────────────────────────────
-function renderCard(cl, esManana, ahora){
-  var inscritos = INSCRITOS[cl.id]||[];
+function renderCard(cl, esManana, ahora, fecha){
+  var f         = fecha || new Date().toISOString().slice(0,10);
+  var key       = String(cl.id)+'|'+f;
+  var inscritos = INSCRITOS[key]||[];
   var inscrito  = inscritos.indexOf(SOCIO_ID)>-1;
   var numIns    = inscritos.length;
   var libre     = cl.cupo - numIns;
@@ -1226,7 +1216,7 @@ function renderCard(cl, esManana, ahora){
 
   if(inscrito){
     // Inscrito: puede cancelar en cualquier día
-    html += "<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"'>Cancelar</button>";
+    html += "<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"' data-fecha='"+f+"'>Cancelar</button>";
   } else if(lleno){
     html += "<span class='pill pm'>Lleno</span>";
   } else if(esManana && !claseHoyTermino){
@@ -1234,7 +1224,7 @@ function renderCard(cl, esManana, ahora){
     var msg="Puedes agendar cuando termine la sesión de hoy ("+cl.hora+" hrs + 1 hora)";
     html += "<button class='btn btn-sm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.3);font-size:10px' data-no-inscribir='"+encodeURIComponent(msg)+"'>¿Cuándo?</button>";
   } else {
-    html += "<button class='btn btn-lime btn-sm' data-inscribir='"+cl.id+"'>Agendar</button>";
+    html += "<button class='btn btn-lime btn-sm' data-inscribir='"+cl.id+"' data-fecha='"+f+"'>Agendar</button>";
   }
 
   html += "</div></div>";

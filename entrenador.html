@@ -155,7 +155,7 @@ textarea{resize:vertical;min-height:70px;}
 <!-- ═══ INICIO: CHECK-INS ════════════════════════════════════ -->
 <div class="screen" id="screen-inicio">
   <div class="hdr">
-    <div><h1>Inicio</h1><small id="hdr-fecha"></small></div>
+    <div><div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div><div id="hdr-trainer-nombre" style="font-size:13px;font-weight:700;color:var(--text)"></div><small id="hdr-fecha"></small></div>
     <div class="hdr-r">
       <button class="btn bl bsm" id="btn-checkin">&#10003; Check-in</button>
     </div>
@@ -407,13 +407,15 @@ function buildMsgsWA(){
 var MSGS_WA = buildMsgsWA();
 
 function recargarDatos(){
-  TRAINERS  = GymDB.getTrainers();
-  SOCIOS    = GymDB.getSocios();
-  DEUDAS    = GymDB.getAllDeudas();
-  CHECKINS  = GymDB.getTodayCheckins();
-  MENSAJES  = GymDB.getMensajes();
-  PRODUCTOS = GymDB.getProductos();
-  MSGS_WA   = buildMsgsWA();
+  TRAINERS   = GymDB.getTrainers();
+  SOCIOS     = GymDB.getSocios();
+  DEUDAS     = GymDB.getAllDeudas();
+  CHECKINS   = GymDB.getTodayCheckins();
+  MENSAJES   = GymDB.getMensajes();
+  PRODUCTOS  = GymDB.getProductos();
+  MEMBRESIAS = GymDB.getMembresias();
+  CLASES     = GymDB.getClases();
+  MSGS_WA    = buildMsgsWA();
 }
 
 function mostrarToast(msg){

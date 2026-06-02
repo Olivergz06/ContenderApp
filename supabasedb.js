@@ -133,11 +133,13 @@ var GymDB = (function () {
       C.mensajes  = res[7]  || [];
 
       // Inscritos → { clase_id: [socio_ids] }
+      // Inscritos por fecha: { "clase_id|fecha": [socio_ids] }
       C.inscritos = {};
       (res[8]||[]).forEach(function(i) {
-        var cid=String(i.clase_id);
-        if (!C.inscritos[cid]) C.inscritos[cid] = [];
-        C.inscritos[cid].push(String(i.socio_id));
+        var fecha = i.fecha || new Date().toISOString().slice(0,10);
+        var key   = String(i.clase_id)+'|'+fecha;
+        if (!C.inscritos[key]) C.inscritos[key] = [];
+        C.inscritos[key].push(String(i.socio_id));
       });
 
       C.trainers = res[9]  || [];
@@ -432,24 +434,28 @@ var GymDB = (function () {
 
     // ── INSCRITOS ────────────────────────────────────────────────
     getAllInscritos:       function()    { return deepCopyObj(C.inscritos); },
-    getInscritosPorClase: function(cid) { return C.inscritos[String(cid)] || []; },
+    getInscritosPorClase: function(cid, fecha) { var f=fecha||new Date().toISOString().slice(0,10); return C.inscritos[String(cid)+'|'+f] || []; },
     saveAllInscritos:     function(obj) { C.inscritos = obj; },
 
-    inscribirSocio: function(cid, sid) {
+    inscribirSocio: function(cid, sid, fecha) {
       var cids=String(cid), sids=String(sid);
-      if (!C.inscritos[cids]) C.inscritos[cids] = [];
-      if (C.inscritos[cids].indexOf(sids) === -1) {
-        C.inscritos[cids].push(sids);
-        post('inscritos',{ clase_id:+cid, socio_id:sids });
+      var f = fecha || new Date().toISOString().slice(0,10);
+      var key = cids+'|'+f;
+      if (!C.inscritos[key]) C.inscritos[key] = [];
+      if (C.inscritos[key].indexOf(sids) === -1) {
+        C.inscritos[key].push(sids);
+        post('inscritos',{ clase_id:+cid, socio_id:sids, fecha:f });
         bump();
       }
     },
 
-    desinscribirSocio: function(cid, sid) {
+    desinscribirSocio: function(cid, sid, fecha) {
       var cids=String(cid), sids=String(sid);
-      if (C.inscritos[cids])
-        C.inscritos[cids] = C.inscritos[cids].filter(function(x){ return x!==sids; });
-      del('inscritos','clase_id=eq.'+cid+'&socio_id=eq.'+sid);
+      var f = fecha || new Date().toISOString().slice(0,10);
+      var key = cids+'|'+f;
+      if (C.inscritos[key])
+        C.inscritos[key] = C.inscritos[key].filter(function(x){ return x!==sids; });
+      del('inscritos','clase_id=eq.'+cid+'&socio_id=eq.'+sid+'&fecha=eq.'+f);
       bump();
     },
 
