@@ -581,6 +581,9 @@ input:focus,select:focus{border-color:var(--lime);}
 
 <!-- ═══ DATA + LÓGICA ════════════════════════════════════════ -->
 <script>
+// Helper global — definido primero para que todos los bloques lo usen
+function ge(id){ return document.getElementById(id); }
+
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
@@ -599,39 +602,6 @@ function showScreen(id) {
   if(id === 'seguimiento') { renderSeguimiento(); }
   if(id === 'rutina')  { cargarRutinaDeGymDB(); renderDayBar(); renderDia(); }
 }
-
-document.querySelectorAll('.nav-item').forEach(function(btn){
-  btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
-});
-
-document.addEventListener('DOMContentLoaded', function(){
-  ge('nav-socio').style.display = 'none';
-
-  // Login principal (pantalla de login, por si se necesita)
-  ge('btn-login').addEventListener('click', intentarLogin);
-  ['login-tel','login-code'].forEach(function(id){
-    ge(id).addEventListener('keydown', function(e){ if(e.key==='Enter') intentarLogin(); });
-    ge(id).addEventListener('focus',   function(){ this.style.borderColor='var(--lime)'; });
-    ge(id).addEventListener('blur',    function(){ this.style.borderColor='var(--border)'; });
-  });
-
-  // Botón + agregar cuenta
-  ge('btn-add-cuenta').addEventListener('click', function(){
-    ge('add-tel').value=''; ge('add-code').value=''; ge('add-error').textContent='';
-    ge('modal-add-cuenta').classList.add('open');
-  });
-  ge('add-ok').addEventListener('click', cargarCuenta);
-  ge('add-cancelar').addEventListener('click', function(){ ge('modal-add-cuenta').classList.remove('open'); });
-  ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
-
-  // Cerrar popup pago
-  ge('popup-ok').addEventListener('click', function(){ ge('popup-pago').classList.remove('open'); });
-
-  // Cerrar modales al tocar fondo
-  ['modal-add-cuenta','popup-pago'].forEach(function(id){
-    ge(id).addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
-  });
-});
 </script>
 
 <!-- LÓGICA: INICIO -->
@@ -999,8 +969,8 @@ function renderSeguimiento(){
         var parts=h.mes.split("-"), mesNom=meses[parseInt(parts[1],10)-1]+" "+parts[0];
         html+="<div class='card' style='display:flex;align-items:center;gap:12px;margin-bottom:8px'>";
         html+="<div style='flex:1'><div style='font-weight:700;font-size:13px'>"+mesNom+"</div></div>";
-        if(h.peso)    html+="<div style='text-align:center'><div style='font-family:"Bebas Neue",sans-serif;font-size:20px;color:#4ECDC4'>"+h.peso+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
-        if(h.musculo) html+="<div style='text-align:center'><div style='font-family:"Bebas Neue",sans-serif;font-size:20px;color:var(--green)'>"+h.musculo+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        if(h.peso)    html+="<div style='text-align:center'><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:#4ECDC4\">"+h.peso+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        if(h.musculo) html+="<div style='text-align:center'><div style=\"font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green)\">"+h.musculo+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
         html+="</div>";
       });
     }
@@ -1033,6 +1003,34 @@ document.addEventListener("DOMContentLoaded",function(){
     renderPerfiles(); // pantalla inicial vacía lista para agregar
   }).catch(function(e){
     console.error('[GymDB]',e);
+  });
+
+  ge('nav-socio').style.display = 'none';
+
+  // Navegación entre pantallas
+  document.querySelectorAll('.nav-item').forEach(function(btn){
+    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
+  });
+
+  // Login de la pantalla de login (por si se usa)
+  if(ge('btn-login')) ge('btn-login').addEventListener('click', intentarLogin);
+  ['login-tel','login-code'].forEach(function(id){
+    var el=ge(id); if(!el) return;
+    el.addEventListener('keydown', function(e){ if(e.key==='Enter') intentarLogin(); });
+  });
+
+  // ★ BOTÓN + AGREGAR CUENTA ★
+  ge('btn-add-cuenta').addEventListener('click', function(){
+    ge('add-tel').value=''; ge('add-code').value=''; ge('add-error').textContent='';
+    ge('modal-add-cuenta').classList.add('open');
+  });
+  ge('add-ok').addEventListener('click', cargarCuenta);
+  ge('add-cancelar').addEventListener('click', function(){ ge('modal-add-cuenta').classList.remove('open'); });
+  ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
+
+  // Cerrar modales al tocar el fondo
+  ['modal-add-cuenta','popup-pago'].forEach(function(id){
+    var el=ge(id); if(el) el.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
   });
 
   renderHeader(); renderQR(); renderMembresia();
