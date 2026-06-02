@@ -909,14 +909,26 @@ function renderStats(){
   ge("st-visitas").textContent = SOCIO.visitas || 0;
   ge("st-peso").textContent    = SOCIO.peso    ? SOCIO.peso+"kg"    : "—";
   ge("st-musculo").textContent = SOCIO.musculo ? SOCIO.musculo+"kg" : "—";
+  // Actualizar con el último registro de seguimiento
+  GymDB.getSeguimiento(SOCIO_ID, function(hist){
+    if(!hist.length) return;
+    var ul = hist[0];
+    if(ul.peso)    ge("st-peso").textContent    = ul.peso+"kg";
+    if(ul.musculo) ge("st-musculo").textContent = ul.musculo+"kg";
+  });
 }
 
 // Clases inscritas para el socio actual, calculadas desde GymDB
 function getClasesInscritas(){
-  var ins = GymDB.getAllInscritos();
+  var ins    = GymDB.getAllInscritos();
   var clases = GymDB.getClases();
+  var sid    = String(SOCIO.id);
+  // Buscar el socio en cualquier key que empiece con clase_id|
   return clases.filter(function(cl){
-    return (ins[cl.id]||[]).indexOf(SOCIO.id) > -1;
+    var prefix = String(cl.id)+'|';
+    return Object.keys(ins).some(function(key){
+      return key.indexOf(prefix)===0 && ins[key].indexOf(sid)>-1;
+    });
   });
 }
 
@@ -1089,15 +1101,14 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // ── Sincronización cross-tab y polling ────────────────────
   GymDB.onChange(function(){
-    if(!SOCIO) return; // no logueado aún
+    // Siempre actualizar clases e inscritos (admin puede agregar clases)
+    CLASES   = GymDB.getClases();
+    INSCRITOS= GymDB.getAllInscritos();
+    if(!SOCIO) return; // lo demás solo si está logueado
     // Recargar datos frescos
     DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
-    CLASES            = GymDB.getClases();
-    INSCRITOS         = GymDB.getAllInscritos();
-    // Actualizar el perfil del socio activo
     var socFresh = GymDB.getSocio(SOCIO.id);
     if(socFresh) SOCIO = socioToPerfile(socFresh);
-    // También actualizar PERFILES
     if(_cuentaActiva) recargarPerfiles(_cuentaActiva);
     mostrarToast("↻ Sincronizado");
     // Re-render pantalla activa

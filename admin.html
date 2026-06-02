@@ -490,11 +490,38 @@ function buildMsgsWA(){
 var MSGS_WA = buildMsgsWA();
 
 // ── Helpers de sincronización ────────────────────────────────
+
+// ── Llenar selects de plan desde el catálogo ─────────────────
+function poblarSelectPlanes(){
+  if(!MEMBRESIAS||!MEMBRESIAS.length) return;
+  // Reconstruir PLAN_DIAS y PLAN_PRECIO desde el catálogo
+  MEMBRESIAS.forEach(function(m){
+    if(!m.nombre) return;
+    PLAN_DIAS[m.nombre]   = m.dias   || 30;
+    PLAN_PRECIO[m.nombre] = m.precio || 0;
+  });
+  // Llenar cada select de plan en la página
+  var ids = ["f-plan","pago-plan"];
+  ids.forEach(function(sid){
+    var sel=ge(sid); if(!sel) return;
+    var actual=sel.value;
+    sel.innerHTML="<option value=''>— Selecciona —</option>";
+    MEMBRESIAS.forEach(function(m){
+      if(!m.nombre) return;
+      var opt=document.createElement("option");
+      opt.value=m.nombre;
+      opt.textContent=m.nombre+" · $"+((m.precio||0).toLocaleString("es-MX"));
+      sel.appendChild(opt);
+    });
+    if(actual) sel.value=actual;
+  });
+}
 function recargarDatos(){
   SOCIOS      = GymDB.getSocios();
   DEUDAS      = GymDB.getAllDeudas();
   CHECKINS    = GymDB.getTodayCheckins();
   MEMBRESIAS  = GymDB.getMembresias();
+  poblarSelectPlanes();
   CLASES      = GymDB.getClases();
   PRODUCTOS   = GymDB.getProductos();
   MENSAJES_CAT= GymDB.getMensajes();
@@ -930,6 +957,7 @@ function guardarSoc(){
 }
 
 // ── MODAL PAGO ────────────────────────────────────────────────
+function _prepModalPago(){ poblarSelectPlanes(); }
 function abrirModalPago(s){
   ge("pago-plan").value=s.plan||"Mensual";
   ge("pago-inicio").value=new Date().toISOString().slice(0,10);
