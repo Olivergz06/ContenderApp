@@ -335,13 +335,14 @@ input:focus,select:focus{border-color:var(--lime);}
 <!-- ═══ SCREEN: INICIO ══════════════════════════════════════ -->
 <div class="screen" id="screen-inicio">
 <!-- HEADER -->
-<div class="hdr">
+<div class="hdr" style="position:relative">
   <div style="flex:1;min-width:0">
     <div class="hdr-nombre" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div>
     <!-- Dropdown de perfil -->
     <select id="sel-perfil" style="background:transparent;border:none;color:var(--lime);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;outline:none;padding:0;margin-top:2px;width:100%;cursor:pointer;-webkit-appearance:none"></select>
   </div>
   <div class="av" id="s-av">CM</div>
+  <button id="btn-sync-inicio" style="position:absolute;top:14px;right:70px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:13px;cursor:pointer">↻</button>
 </div>
 <div style="padding:2px 16px 10px;font-size:12px;color:var(--muted)" id="s-fecha"></div>
 
@@ -633,6 +634,17 @@ var _gymdbReady = GymDB.init(); // Promise
 
 var PERFILES = [];        // se llena al hacer login
 var DEUDAS_POR_SOCIO = {};// alias de GymDB.getAllDeudas()
+
+function recargarTodo(){
+  CLASES           = GymDB.getClases();
+  INSCRITOS        = GymDB.getAllInscritos();
+  DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
+  if(!SOCIO) return;
+  var socFresh = GymDB.getSocios().find(function(x){ return x.id===SOCIO.id; });
+  if(socFresh) SOCIO = socFresh;
+  renderHeader(); renderQR(); renderMembresia(); renderStats();
+  renderProximaClase(); renderAbonos(); renderDeudas();
+}
 var SOCIO = null;
 
 function ge(id){ return document.getElementById(id); }
@@ -1082,6 +1094,13 @@ document.addEventListener("DOMContentLoaded",function(){
       b.textContent="↻"; b.disabled=false;
     });
   });
+  ge("btn-sync-inicio").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){
+      recargarTodo();
+      b.textContent="↻"; b.disabled=false;
+    });
+  });
 
   // Cargar clases e inscritos cuando Supabase está listo
   _gymdbReady.then(function(){
@@ -1160,26 +1179,29 @@ var DIAS_SEMANA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 // ── RENDER: CLASES DE HOY Y MAÑANA ───────────────────────────
 function renderClasesDia(){
-  var ahora      = new Date();
-  var hoy        = new Date(); hoy.setHours(0,0,0,0);
-  var manana     = new Date(hoy); manana.setDate(hoy.getDate()+1);
-  var fechaHoy   = hoy.toISOString().slice(0,10);
-  var fechaMañana= manana.toISOString().slice(0,10);
-  var nomHoy     = DIAS_SEMANA[hoy.getDay()];
-  var nomManana  = DIAS_SEMANA[manana.getDay()];
-  var c = ge("lista-clases");
-  var html = "";
+  var ahora = new Date();
+  var hoy   = new Date(); hoy.setHours(0,0,0,0);
+  var c     = ge("lista-clases");
+  var html  = "";
 
-  var hoyClases = CLASES.filter(function(cl){ return cl.dias.indexOf(nomHoy)>-1; });
-  html += "<div class='sec-lbl' style='margin-bottom:8px'>Hoy · "+hoy.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"})+"</div>";
-  if(!hoyClases.length) html += "<div class='empty' style='padding:16px 0'><p>Sin clases hoy</p></div>";
-  else hoyClases.forEach(function(cl){ html += renderCard(cl, false, ahora, fechaHoy); });
+  // Mostrar los próximos 7 días (empezando por hoy)
+  for(var d=0; d<7; d++){
+    var dia     = new Date(hoy); dia.setDate(hoy.getDate()+d);
+    var fecha   = dia.toISOString().slice(0,10);
+    var nomDia  = DIAS_SEMANA[dia.getDay()];
+    var esHoy   = d===0;
+    var esManana= d===1;
+    var clases  = CLASES.filter(function(cl){ return cl.dias.indexOf(nomDia)>-1; });
+    if(!clases.length) continue; // sin clases ese día, saltar
 
-  var mananaClases = CLASES.filter(function(cl){ return cl.dias.indexOf(nomManana)>-1; });
-  html += "<div class='sec-lbl' style='margin-top:16px;margin-bottom:8px'>Mañana · "+manana.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"})+"</div>";
-  if(!mananaClases.length) html += "<div class='empty' style='padding:16px 0'><p>Sin clases mañana</p></div>";
-  else mananaClases.forEach(function(cl){ html += renderCard(cl, true, ahora, fechaMañana); });
+    var labelDia = esHoy ? "Hoy" : esManana ? "Mañana" : "";
+    var fechaLabel = dia.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+    if(labelDia) fechaLabel = labelDia+" · "+fechaLabel;
+    html += "<div class='sec-lbl' style='margin-top:"+(d===0?"0":"16px")+";margin-bottom:8px'>"+fechaLabel+"</div>";
+    clases.forEach(function(cl){ html += renderCard(cl, !esHoy, ahora, fecha); });
+  }
 
+  if(!html) html = "<div class='empty' style='padding:24px 0'><div class='ico'>📅</div><p>Sin clases los próximos 7 días</p></div>";
   c.innerHTML = html;
 
   c.querySelectorAll("[data-inscribir]").forEach(function(btn){

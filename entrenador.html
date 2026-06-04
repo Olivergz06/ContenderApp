@@ -254,6 +254,7 @@ textarea{resize:vertical;min-height:70px;}
   <div class="hdr">
     <div><h1 id="det-nombre">Socio</h1><small id="det-sub"></small></div>
     <div class="hdr-r">
+      <button class="btn bd bsm" id="btn-sync-det">↻</button>
       <button class="btn bd bsm" id="btn-det-back">&#8592; Volver</button>
     </div>
   </div>
@@ -1187,6 +1188,18 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("btn-form-cancel").addEventListener("click",function(){ showScreen("socios"); });
   ge("btn-guardar-socio").addEventListener("click", guardarSocio);
   ge("btn-det-back").addEventListener("click",function(){ showScreen("socios"); });
+  ge("btn-sync-det").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){
+      recargarDatos();
+      DEUDAS=GymDB.getAllDeudas();
+      // Refrescar el socio activo
+      if(socioActual) socioActual=SOCIOS.find(function(x){return x.id===socioActual.id;})||socioActual;
+      renderDetalle();
+      b.textContent="↻"; b.disabled=false;
+      mostrarToast("↻ Actualizado");
+    });
+  });
 
   // Modal pago
   ge("pago-plan").addEventListener("change",actualizarResumenPago);

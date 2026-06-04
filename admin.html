@@ -214,7 +214,10 @@ textarea{resize:vertical;min-height:70px;}
 <div class="screen" id="screen-detalle">
   <div class="hdr">
     <div><h1 id="det-nombre">—</h1><small id="det-sub"></small></div>
-    <div class="hdr-r"><button class="btn bd bsm" id="btn-det-back">← Volver</button></div>
+    <div class="hdr-r">
+      <button class="btn bd bsm" id="btn-sync-det">↻</button>
+      <button class="btn bd bsm" id="btn-det-back">← Volver</button>
+    </div>
   </div>
   <div class="tabs">
     <button class="tab active" data-det="membresia">Membresía y Deudas</button>
@@ -1345,6 +1348,16 @@ document.addEventListener("DOMContentLoaded",function(){
   });
   ge("btn-nuevo-soc").addEventListener("click",abrirNuevoSoc);
   ge("btn-det-back").addEventListener("click",function(){showScreen("socios");});
+  ge("btn-sync-det").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){
+      recargarDatos();
+      if(socioActual) socioActual=SOCIOS.find(function(x){return x.id===socioActual.id;})||socioActual;
+      renderDetalle();
+      b.textContent="↻"; b.disabled=false;
+      mostrarToast("↻ Actualizado");
+    });
+  });
   ge("btn-form-cancel").addEventListener("click",function(){showScreen("socios");});
   ge("btn-guardar-soc").addEventListener("click",guardarSoc);
   document.querySelectorAll(".tab[data-det]").forEach(function(b){b.addEventListener("click",function(){detTab=this.dataset.det;document.querySelectorAll(".tab[data-det]").forEach(function(x){x.classList.toggle("active",x.dataset.det===detTab);});renderDetalle();});});
