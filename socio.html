@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 
+
 /* ── RESET ──────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#080808;color:#F0EDE8;font-family:"DM Sans",sans-serif;max-width:430px;margin:0 auto;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -293,9 +294,11 @@ input:focus,select:focus{border-color:var(--lime);}
 ::placeholder{color:#444;}
 
 .nav-ph{height:84px;}
+
 </style>
 </head>
 <body>
+
 
 <!-- ═══ SCREEN: INICIO ═══════════════════════════════════════ -->
 <!-- ═══ SCREEN: LOGIN ════════════════════════════════════════ -->
@@ -594,6 +597,7 @@ input:focus,select:focus{border-color:var(--lime);}
 
 <!-- ═══ DATA + LÓGICA ════════════════════════════════════════ -->
 <script>
+
 // Helper global — definido primero para que todos los bloques lo usen
 function ge(id){ return document.getElementById(id); }
 
@@ -620,14 +624,7 @@ function showScreen(id) {
 }
 
 // Registrar nav-items aquí donde showScreen ya existe
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('.nav-item').forEach(function(btn){
-    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
-  });
-});</script>
 
-<!-- LÓGICA: INICIO -->
-<script>
 
 // ── DATOS DESDE GYMDB (cargados async en DOMContentLoaded) ──
 var _gymdbReady = GymDB.init(); // Promise
@@ -1125,9 +1122,13 @@ document.addEventListener("DOMContentLoaded",function(){
   _gymdbReady.then(function(){
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
-    CLASES   = GymDB.getClases();
+    CLASES   = GymDB.getClases().map(function(cl){
+      if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
+      if(!Array.isArray(cl.dias)) cl.dias=[];
+      return cl;
+    });
     INSCRITOS= GymDB.getAllInscritos();
-    renderPerfiles(); // pantalla inicial vacía lista para agregar
+    renderPerfiles();
   }).catch(function(e){
     console.error('[GymDB]',e);
   });
@@ -1139,8 +1140,6 @@ document.addEventListener("DOMContentLoaded",function(){
     el.addEventListener('keydown', function(e){ if(e.key==='Enter') intentarLogin(); });
   });
 
-  renderHeader(); renderQR(); renderMembresia();
-  renderStats(); renderProximaClase(); renderAbonos(); renderDeudas();
   // Cambio de perfil en dropdown
   ge("sel-perfil").addEventListener("change", function(){
     SOCIO = PERFILES.find(function(p){ return p.id===this.value; }, this) || PERFILES[0];
@@ -1179,10 +1178,7 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 });
 
-</script>
 
-<!-- LÓGICA: CLASES -->
-<script>
 
 // SOCIO_ID: se actualiza cuando el usuario selecciona perfil
 var SOCIO_ID = "001";
@@ -1370,10 +1366,7 @@ document.addEventListener("DOMContentLoaded",function(){
   renderClasesDia();
 });
 
-</script>
 
-<!-- LÓGICA: RUTINA -->
-<script>
 
 // Carga la rutina del socio desde GymDB (si existe)
 function cargarRutinaDeGymDB(){
@@ -1637,7 +1630,7 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 });
 
-</script>
 
+</script>
 </body>
 </html>
