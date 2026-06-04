@@ -1045,7 +1045,26 @@ document.getElementById("btn-guardar-seg").addEventListener("click",function(){
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
-  // Cargar clases e inscritos cuando Supabase está listo
+  // ★ BOTÓN + AGREGAR CUENTA ★ — primero para garantizar su registro
+  ge('btn-add-cuenta').addEventListener('click', function(){
+    ge('add-tel').value=''; ge('add-code').value=''; ge('add-error').textContent='';
+    ge('modal-add-cuenta').classList.add('open');
+  });
+  ge('add-ok').addEventListener('click', cargarCuenta);
+  ge('add-cancelar').addEventListener('click', function(){ ge('modal-add-cuenta').classList.remove('open'); });
+  ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
+
+  // Popup pago
+  ge("popup-ok").addEventListener("click", function(){
+    _popupPagoVisto = true;
+    ge("popup-pago").classList.remove("open");
+  });
+  ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){
+    if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); }
+  });
+  ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+
+  // Botón ↻ clases
   ge("btn-sync-clases").addEventListener("click",function(){
     var b=this; b.textContent="…"; b.disabled=true;
     GymDB.init().then(function(){
@@ -1054,14 +1073,8 @@ document.addEventListener("DOMContentLoaded",function(){
       b.textContent="↻"; b.disabled=false;
     });
   });
-  ge("popup-ok").addEventListener("click", function(){
-    _popupPagoVisto = true;
-    ge("popup-pago").classList.remove("open");
-  });
-  ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){
-    if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); }
-  });
 
+  // Cargar clases e inscritos cuando Supabase está listo
   _gymdbReady.then(function(){
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
@@ -1085,18 +1098,6 @@ document.addEventListener("DOMContentLoaded",function(){
     var el=ge(id); if(!el) return;
     el.addEventListener('keydown', function(e){ if(e.key==='Enter') intentarLogin(); });
   });
-
-  // ★ BOTÓN + AGREGAR CUENTA ★
-  ge('btn-add-cuenta').addEventListener('click', function(){
-    ge('add-tel').value=''; ge('add-code').value=''; ge('add-error').textContent='';
-    ge('modal-add-cuenta').classList.add('open');
-  });
-  ge('add-ok').addEventListener('click', cargarCuenta);
-  ge('add-cancelar').addEventListener('click', function(){ ge('modal-add-cuenta').classList.remove('open'); });
-  ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
-
-  // Cerrar modales al tocar el fondo
-  ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
 
   renderHeader(); renderQR(); renderMembresia();
   renderStats(); renderProximaClase(); renderAbonos(); renderDeudas();
