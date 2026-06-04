@@ -636,12 +636,16 @@ var PERFILES = [];        // se llena al hacer login
 var DEUDAS_POR_SOCIO = {};// alias de GymDB.getAllDeudas()
 
 function recargarTodo(){
-  CLASES           = GymDB.getClases();
+  CLASES=GymDB.getClases().map(function(cl){
+    if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
+    if(!Array.isArray(cl.dias)) cl.dias=[];
+    return cl;
+  });
   INSCRITOS        = GymDB.getAllInscritos();
   DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
   if(!SOCIO) return;
-  var socFresh = GymDB.getSocios().find(function(x){ return x.id===SOCIO.id; });
-  if(socFresh) SOCIO = socFresh;
+  var sf=GymDB.getSocios().find(function(x){return x.id===SOCIO.id;});
+  if(sf) SOCIO=sf;
   renderHeader(); renderQR(); renderMembresia(); renderStats();
   renderProximaClase(); renderAbonos(); renderDeudas();
 }
@@ -1086,19 +1090,34 @@ document.addEventListener("DOMContentLoaded",function(){
   ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
 
   // Botón ↻ clases
+  function _recargarClases(){
+    CLASES=GymDB.getClases().map(function(cl){
+      if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
+      if(!Array.isArray(cl.dias)) cl.dias=[];
+      return cl;
+    });
+    INSCRITOS=GymDB.getAllInscritos();
+  }
   ge("btn-sync-clases").addEventListener("click",function(){
     var b=this; b.textContent="…"; b.disabled=true;
     GymDB.init().then(function(){
-      CLASES=GymDB.getClases(); INSCRITOS=GymDB.getAllInscritos();
-      renderMisClases(); renderClasesDia();
+      _recargarClases(); renderMisClases(); renderClasesDia();
       b.textContent="↻"; b.disabled=false;
     });
   });
   ge("btn-sync-inicio").addEventListener("click",function(){
     var b=this; b.textContent="…"; b.disabled=true;
     GymDB.init().then(function(){
-      recargarTodo();
+      _recargarClases();
+      DEUDAS_POR_SOCIO=GymDB.getAllDeudas();
+      if(SOCIO){
+        var sf=GymDB.getSocios().find(function(x){return x.id===SOCIO.id;});
+        if(sf) SOCIO=sf;
+        renderHeader(); renderQR(); renderMembresia(); renderStats();
+        renderProximaClase(); renderAbonos(); renderDeudas();
+      }
       b.textContent="↻"; b.disabled=false;
+      mostrarToast("↻ Actualizado");
     });
   });
 

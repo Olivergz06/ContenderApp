@@ -128,7 +128,11 @@ var GymDB = (function () {
 
       C.ventas    = res[3]  || [];
       C.membresias= res[4]  || [];
-      C.clases    = res[5]  || [];
+      C.clases    = (res[5]||[]).map(function(cl){
+        if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
+        if(!Array.isArray(cl.dias)) cl.dias=[];
+        return cl;
+      });
       C.productos = res[6]  || [];
       C.mensajes  = res[7]  || [];
 
