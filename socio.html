@@ -599,7 +599,9 @@ function ge(id){ return document.getElementById(id); }
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-  document.getElementById('screen-' + id).classList.add('active');
+  var target = document.getElementById('screen-' + id);
+  if(!target) return;
+  target.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.screen === id);
   });
@@ -609,12 +611,19 @@ function showScreen(id) {
     return;
   }
   ge('nav-socio').style.display = 'flex';
+  if(!SOCIO) return; // no hay sesión activa
   if(id === 'inicio')  { renderHeader(); renderQR(); renderMembresia(); renderStats(); renderProximaClase(); renderAbonos(); renderDeudas(); checkPopupPago(); }
   if(id === 'clases')  { renderMisClases(); renderClasesDia(); }
   if(id === 'seguimiento') { renderSeguimiento(); }
   if(id === 'rutina')  { cargarRutinaDeGymDB(); renderDayBar(); renderDia(); }
 }
-</script>
+
+// Registrar nav-items aquí donde showScreen ya existe
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.nav-item').forEach(function(btn){
+    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
+  });
+});</script>
 
 <!-- LÓGICA: INICIO -->
 <script>
@@ -1083,13 +1092,6 @@ document.addEventListener("DOMContentLoaded",function(){
     renderPerfiles(); // pantalla inicial vacía lista para agregar
   }).catch(function(e){
     console.error('[GymDB]',e);
-  });
-
-  ge('nav-socio').style.display = 'none';
-
-  // Navegación entre pantallas
-  document.querySelectorAll('.nav-item').forEach(function(btn){
-    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
   });
 
   // Login de la pantalla de login (por si se usa)
