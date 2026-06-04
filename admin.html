@@ -190,7 +190,7 @@ textarea{resize:vertical;min-height:70px;}
 <div class="screen" id="screen-socios">
   <div class="hdr">
     <div><h1>Socios</h1></div>
-    <div class="hdr-r"><button class="btn bl bsm" id="btn-nuevo-soc">+ Agregar</button></div>
+    <div class="hdr-r"><button class="btn bd bsm" id="btn-sync-socios">↻</button><button class="btn bl bsm" id="btn-nuevo-soc">+ Agregar</button></div>
   </div>
   <div style="padding:0 16px;margin-bottom:8px">
     <input style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;width:100%;outline:none;" type="text" id="soc-buscar" placeholder="&#128269; Buscar nombre, código, plan…">
@@ -277,7 +277,7 @@ textarea{resize:vertical;min-height:70px;}
 
 <!-- ═══ CATÁLOGO ══════════════════════════════════════════════ -->
 <div class="screen" id="screen-catalogo">
-  <div class="hdr"><div><h1>Catálogo</h1></div><div class="hdr-r"><button class="btn bl bsm" id="btn-cat-nuevo">+ Nuevo</button></div></div>
+  <div class="hdr"><div><h1>Catálogo</h1></div><div class="hdr-r"><button class="btn bd bsm" id="btn-sync-cat">↻</button><button class="btn bl bsm" id="btn-cat-nuevo">+ Nuevo</button></div></div>
   <div class="tabs">
     <button class="tab active" data-cat="membresias">Membresías</button>
     <button class="tab" data-cat="clases">Clases</button>
@@ -1335,6 +1335,14 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("soc-buscar").addEventListener("input",renderSocios);
   ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
   ge("btn-orden-dir").addEventListener("click",function(){ordenAsc=!ordenAsc;this.textContent=ordenAsc?"↑":"↓";renderSocios();});
+  ge("btn-sync-socios").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){ recargarDatos(); renderSocios(); b.textContent="↻"; b.disabled=false; mostrarToast("↻ Actualizado"); });
+  });
+  ge("btn-sync-cat").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){ recargarDatos(); renderCatalogo(); b.textContent="↻"; b.disabled=false; mostrarToast("↻ Actualizado"); });
+  });
   ge("btn-nuevo-soc").addEventListener("click",abrirNuevoSoc);
   ge("btn-det-back").addEventListener("click",function(){showScreen("socios");});
   ge("btn-form-cancel").addEventListener("click",function(){showScreen("socios");});

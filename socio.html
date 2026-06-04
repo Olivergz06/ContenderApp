@@ -1046,6 +1046,14 @@ document.getElementById("btn-guardar-seg").addEventListener("click",function(){
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
   // Cargar clases e inscritos cuando Supabase está listo
+  ge("btn-sync-clases").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){
+      CLASES=GymDB.getClases(); INSCRITOS=GymDB.getAllInscritos();
+      renderMisClases(); renderClasesDia();
+      b.textContent="↻"; b.disabled=false;
+    });
+  });
   ge("popup-ok").addEventListener("click", function(){
     _popupPagoVisto = true;
     ge("popup-pago").classList.remove("open");
@@ -1115,7 +1123,7 @@ document.addEventListener("DOMContentLoaded",function(){
     var socFresh = GymDB.getSocio(SOCIO.id);
     if(socFresh) SOCIO = socioToPerfile(socFresh);
     if(_cuentaActiva) recargarPerfiles(_cuentaActiva);
-    mostrarToast("↻ Sincronizado");
+
     // Re-render pantalla activa
     var screens=["inicio","clases","rutina","perfiles"];
     for(var i=0;i<screens.length;i++){
@@ -1256,11 +1264,15 @@ function renderMisClases(){
   var fmtHoy    = hoy.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"short"});
   var fmtManana = manana.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"short"});
 
+  // Extraer clase_ids donde este socio está inscrito (cualquier fecha)
   var misIds=[];
-  Object.keys(INSCRITOS).forEach(function(id){
-    if((INSCRITOS[id]||[]).indexOf(SOCIO_ID)>-1) misIds.push(+id);
+  Object.keys(INSCRITOS).forEach(function(key){
+    if((INSCRITOS[key]||[]).indexOf(String(SOCIO_ID))>-1){
+      var cid=key.split("|")[0]; // clave = "clase_id|fecha"
+      if(misIds.indexOf(cid)===-1) misIds.push(cid);
+    }
   });
-  var mis=CLASES.filter(function(cl){ return misIds.indexOf(cl.id)>-1; });
+  var mis=CLASES.filter(function(cl){ return misIds.indexOf(String(cl.id))>-1; });
   var c=ge("mis-clases");
   if(!mis.length){
     c.innerHTML="<div class='mc-titulo'>Mis clases inscritas</div><div style='padding:12px 14px;font-size:12px;color:var(--muted)'>Sin clases agendadas</div>";
@@ -1283,7 +1295,12 @@ function renderMisClases(){
     html+="  <div class='mc-sub'>"+cl.hora+" · "+cl.coach+"</div>";
     html+="  <div class='mc-sub'>"+diaLabel+"</div>";
     html+="</div>";
-    html+="<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"'>✕</button>";
+    // Buscar fecha de inscripción para esta clase
+    var fechaCl="";
+    Object.keys(INSCRITOS).forEach(function(k){
+      if(k.indexOf(String(cl.id)+"|")===0&&(INSCRITOS[k]||[]).indexOf(String(SOCIO_ID))>-1) fechaCl=k.split("|")[1];
+    });
+    html+="<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"' data-fecha='"+fechaCl+"'>✕</button>";
     html+="</div>";
   });
   c.innerHTML=html;
@@ -1291,8 +1308,7 @@ function renderMisClases(){
   // Botón cancelar desde "mis clases"
   c.querySelectorAll("[data-cancel]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var id=+this.dataset.cancel;
-      GymDB.desinscribirSocio(id, SOCIO_ID);
+      GymDB.desinscribirSocio(+this.dataset.cancel, SOCIO_ID, this.dataset.fecha||null);
       INSCRITOS=GymDB.getAllInscritos();
       renderClasesDia(); renderMisClases();
     });
