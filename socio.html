@@ -368,7 +368,7 @@ input:focus,select:focus{border-color:var(--lime);}
        MEMBRESÍA ACTIVA
        ══════════════════════════════════════════════════════ -->
   <span class="lbl">Mi membresía</span>
-  <div class="memb-card" id="memb-card">
+  <div class="memb-card" id="memb-card" style="cursor:pointer" onclick="toggleHistorialMemb()">
     <div>
       <div class="memb-nombre" id="memb-nombre">—</div>
       <div class="memb-vence" id="memb-vence">—</div>
@@ -377,8 +377,13 @@ input:focus,select:focus{border-color:var(--lime);}
         <div class="prog-fill" id="memb-prog"></div>
       </div>
     </div>
-    <div id="memb-pill"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div id="memb-pill"></div>
+      <div style="font-size:10px;color:var(--muted)">ver historial ↓</div>
+    </div>
   </div>
+  <!-- Historial membresías desplegable -->
+  <div id="memb-historial-panel" style="display:none;margin-top:-4px;margin-bottom:8px"></div>
 
   <!-- ══════════════════════════════════════════════════════
        STATS DEL MES
@@ -390,15 +395,17 @@ input:focus,select:focus{border-color:var(--lime);}
       <div class="snum" id="st-visitas" style="color:var(--lime)">0</div>
       <div class="slbl">Visitas</div>
     </div>
-    <div class="sbox">
+    <div class="sbox" style="cursor:pointer" onclick="toggleHistorialSeg('peso')">
       <div class="snum" id="st-peso" style="color:#4ECDC4">—</div>
-      <div class="slbl">kg peso</div>
+      <div class="slbl">kg peso ↓</div>
     </div>
-    <div class="sbox">
+    <div class="sbox" style="cursor:pointer" onclick="toggleHistorialSeg('musculo')">
       <div class="snum" id="st-musculo" style="color:var(--green)">—</div>
-      <div class="slbl">kg musc.</div>
+      <div class="slbl">kg musc. ↓</div>
     </div>
   </div>
+  <!-- Panel historial seguimiento -->
+  <div id="seg-hist-panel" style="display:none;margin-top:-4px;margin-bottom:8px"></div>
 
   <!-- ══════════════════════════════════════════════════════
        PRÓXIMA CLASE
@@ -926,6 +933,76 @@ function renderMembresia(){
   ge("memb-prog").style.width = pct+"%";
 }
 
+function fFs(f){ return f?new Date(f+"T00:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"2-digit"}):"—"; }
+
+function toggleHistorialMemb(){
+  var panel = ge("memb-historial-panel");
+  if(panel.style.display!=="none"){ panel.style.display="none"; return; }
+  var hist = (SOCIO&&SOCIO.historial_membresias)||[];
+  var abonos = SOCIO&&SOCIO.abonos||[];
+  if(!hist.length&&!abonos.length){ panel.innerHTML="<div style='font-size:12px;color:var(--muted);padding:8px 16px'>Sin historial de membresías</div>"; panel.style.display="block"; return; }
+  var html="<div style='background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:8px'>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:10px 14px 6px'>Membresía activa</div>";
+  if(abonos.length){
+    var hoy2=new Date();hoy2.setHours(0,0,0,0);
+    abonos.forEach(function(a){
+      var lim=new Date(a.fecha_limite+"T00:00:00");
+      var venc=!a.pagado&&lim<hoy2;
+      var color=a.pagado?"var(--green)":venc?"var(--red)":"var(--orange)";
+      var ico=a.pagado?"✓":a.num;
+      html+="<div style='display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border)'>";
+      html+="<div style='width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.3);border:1.5px solid "+color+";display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:"+color+"'>"+ico+"</div>";
+      html+="<div style='flex:1;font-size:12px'>Abono "+a.num+(a.pagado?" · Pagado":venc?" · Vencido":" · Pendiente")+"</div>";
+      html+="<div style='font-family:Bebas Neue,sans-serif;font-size:16px;color:"+color+"'>$"+Number(a.monto).toLocaleString("es-MX")+"</div>";
+      html+="</div>";
+    });
+  }
+  if(hist.length){
+    var histOrd=hist.slice().sort(function(a,b){return (b.fecha_vencimiento||"").localeCompare(a.fecha_vencimiento||"");});
+    html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:10px 14px 6px;border-top:1px solid var(--border)'>Historial anteriores</div>";
+    histOrd.slice(0,12).forEach(function(h){
+      html+="<div style='display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border)'>";
+      html+="<div style='flex:1'><div style='font-size:13px;font-weight:600'>"+h.plan+"</div><div style='font-size:11px;color:var(--muted)'>"+fFs(h.fecha_inicio)+" → "+fFs(h.fecha_vencimiento)+"</div></div>";
+      html+="<div style='font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--muted)'>$"+Number(h.precio||0).toLocaleString("es-MX")+"</div>";
+      html+="</div>";
+    });
+  }
+  html+="</div>";
+  panel.innerHTML=html;
+  panel.style.display="block";
+}
+
+var _segHistActivo = null;
+function toggleHistorialSeg(campo){
+  var panel = ge("seg-hist-panel");
+  if(panel.style.display!=="none"&&_segHistActivo===campo){ panel.style.display="none"; _segHistActivo=null; return; }
+  _segHistActivo=campo;
+  panel.innerHTML="<div style='font-size:12px;color:var(--muted);padding:8px 0'>Cargando…</div>";
+  panel.style.display="block";
+  GymDB.getSeguimiento(SOCIO_ID,function(hist){
+    if(!hist.length){ panel.innerHTML="<div style='font-size:12px;color:var(--muted);padding:8px 0'>Sin registros aún</div>"; return; }
+    var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    var html="<div style='background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:8px'>";
+    html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:10px 14px 6px'>"+(campo==="peso"?"Historial peso":"Historial músculo")+" (últimos 12)</div>";
+    hist.slice(0,12).forEach(function(h,i){
+      var d=new Date((h.fecha||h.mes+"-01")+"T00:00:00");
+      var mn=meses[d.getMonth()]+" "+d.getFullYear();
+      var val=campo==="peso"?h.peso:h.musculo;
+      var prev=i<hist.length-1?(campo==="peso"?hist[i+1].peso:hist[i+1].musculo):null;
+      var diff=val&&prev?Math.round((val-prev)*10)/10:null;
+      var diffTxt=diff!==null?(diff>0?"+"+diff:diff)+" kg":"";
+      var diffColor=diff===null?"":diff>0?"var(--orange)":diff<0?"var(--green)":"var(--muted)";
+      html+="<div style='display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border)'>";
+      html+="<div style='flex:1;font-size:12px;color:var(--muted)'>"+mn+"</div>";
+      if(diffTxt) html+="<div style='font-size:11px;color:"+diffColor+"'>"+diffTxt+"</div>";
+      html+="<div style='font-family:Bebas Neue,sans-serif;font-size:18px;color:"+(campo==="peso"?"#4ECDC4":"var(--green)")+"'>"+(val||"—")+" kg</div>";
+      html+="</div>";
+    });
+    html+="</div>";
+    panel.innerHTML=html;
+  });
+}
+
 // ── STATS ─────────────────────────────────────────────────────
 function renderStats(){
   ge("st-visitas").textContent = SOCIO.visitas || 0;
@@ -1192,31 +1269,59 @@ function ge(id){ return document.getElementById(id); }
 
 var DIAS_SEMANA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
-// ── RENDER: CLASES DE HOY Y MAÑANA ───────────────────────────
+// ── HELPERS DE SEMANA ────────────────────────────────────────
+function isoSemana(fecha){
+  // Retorna "YYYY-Wnn" para comparar semanas
+  var d=new Date(fecha+"T00:00:00");
+  var day=d.getDay(); var diff=d.getDate()-day+(day===0?-6:1);
+  var lunes=new Date(d.setDate(diff));
+  return lunes.toISOString().slice(0,10);
+}
+
+// ── RENDER: CLASES ───────────────────────────────────────────
 function renderClasesDia(){
   var ahora = new Date();
   var hoy   = new Date(); hoy.setHours(0,0,0,0);
   var c     = ge("lista-clases");
   var html  = "";
 
-  // Mostrar los próximos 7 días (empezando por hoy)
-  for(var d=0; d<7; d++){
+  // Determinar si el socio ya tiene una clase agendada en la semana actual
+  var semanaHoy = isoSemana(hoy.toISOString().slice(0,10));
+  var semanaProx = isoSemana(new Date(hoy.getTime()+7*86400000).toISOString().slice(0,10));
+
+  // Buscar clases activas del socio (fecha >= hoy)
+  var clasesFuturas = [];
+  Object.keys(INSCRITOS).forEach(function(key){
+    if((INSCRITOS[key]||[]).indexOf(String(SOCIO_ID))>-1){
+      var parts=key.split("|"); var f=parts[1];
+      if(f>=hoy.toISOString().slice(0,10)) clasesFuturas.push({cid:parts[0],fecha:f});
+    }
+  });
+  var tieneClaseEstaSemana = clasesFuturas.some(function(x){ return isoSemana(x.fecha)===semanaHoy; });
+  var tieneClaseProxSemana = clasesFuturas.some(function(x){ return isoSemana(x.fecha)===semanaProx; });
+
+  // Mostrar próximos 14 días
+  for(var d=0; d<14; d++){
     var dia     = new Date(hoy); dia.setDate(hoy.getDate()+d);
     var fecha   = dia.toISOString().slice(0,10);
     var nomDia  = DIAS_SEMANA[dia.getDay()];
     var esHoy   = d===0;
-    var esManana= d===1;
     var clases  = CLASES.filter(function(cl){ return cl.dias.indexOf(nomDia)>-1; });
-    if(!clases.length) continue; // sin clases ese día, saltar
+    if(!clases.length) continue;
 
-    var labelDia = esHoy ? "Hoy" : esManana ? "Mañana" : "";
     var fechaLabel = dia.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
-    if(labelDia) fechaLabel = labelDia+" · "+fechaLabel;
+    if(esHoy) fechaLabel = "Hoy · " + fechaLabel;
+    // Render cards first; only add the label if at least one card is visible
+    var cardsHtml = "";
+    clases.forEach(function(cl){
+      cardsHtml += renderCard(cl, ahora, dia, fecha, tieneClaseEstaSemana, tieneClaseProxSemana, clasesFuturas, semanaHoy, semanaProx);
+    });
+    if(!cardsHtml) continue; // all classes finished → skip this day entirely
     html += "<div class='sec-lbl' style='margin-top:"+(d===0?"0":"16px")+";margin-bottom:8px'>"+fechaLabel+"</div>";
-    clases.forEach(function(cl){ html += renderCard(cl, !esHoy, ahora, fecha); });
+    html += cardsHtml;
   }
 
-  if(!html) html = "<div class='empty' style='padding:24px 0'><div class='ico'>📅</div><p>Sin clases los próximos 7 días</p></div>";
+  if(!html) html = "<div class='empty' style='padding:24px 0'><div class='ico'>📅</div><p>Sin clases los próximos días</p></div>";
   c.innerHTML = html;
 
   c.querySelectorAll("[data-inscribir]").forEach(function(btn){
@@ -1251,23 +1356,24 @@ function mostrarMsgClase(msg){
 }
 
 // ── RENDER: TARJETA DE CLASE ──────────────────────────────────
-function renderCard(cl, esManana, ahora, fecha){
-  var f         = fecha || new Date().toISOString().slice(0,10);
+function renderCard(cl, ahora, diaObj, fecha, tieneClaseEstaSemana, tieneClaseProxSemana, clasesFuturas, semanaHoy, semanaProx){
+  var f         = fecha;
   var key       = String(cl.id)+'|'+f;
   var inscritos = INSCRITOS[key]||[];
-  var inscrito  = inscritos.indexOf(SOCIO_ID)>-1;
+  var inscrito  = inscritos.indexOf(String(SOCIO_ID))>-1;
   var numIns    = inscritos.length;
   var libre     = cl.cupo - numIns;
   var lleno     = !inscrito && libre <= 0;
   var cupoColor = libre>3?"var(--green)":libre>0?"var(--orange)":"var(--red)";
   var cupoTxt   = lleno?"Lleno":libre+" lugar"+(libre===1?"":"es");
+  var semanaFecha = isoSemana(f);
 
-  // ¿La clase de hoy ya terminó? (hora inicio + 1 hora)
-  var claseHoyTermino = true;
-  if(esManana && cl.hora){
+  // ¿Terminó esta clase hoy?
+  var claseTermino = false;
+  if(cl.hora){
     var partes=cl.hora.split(":"), hh=parseInt(partes[0],10), mm=parseInt(partes[1]||0,10);
-    var finHoy=new Date(); finHoy.setHours(hh, mm+60, 0, 0);
-    claseHoyTermino = ahora >= finHoy;
+    var fin=new Date(diaObj); fin.setHours(hh,mm+60,0,0);
+    claseTermino = ahora >= fin;
   }
 
   var html = "<div class='clase-card'>";
@@ -1278,17 +1384,53 @@ function renderCard(cl, esManana, ahora, fecha){
   html += "  <div class='clase-cupo' style='color:"+cupoColor+"'>"+numIns+"/"+cl.cupo+" · "+cupoTxt+"</div>";
   html += "</div><div class='clase-act'>";
 
+  // Clase ya terminó → no mostrar
+  if(claseTermino){ return ""; }
+
   if(inscrito){
-    // Inscrito: puede cancelar en cualquier día
     html += "<button class='btn btn-outline btn-sm' style='color:var(--red);border-color:var(--red)' data-cancel='"+cl.id+"' data-fecha='"+f+"'>Cancelar</button>";
   } else if(lleno){
     html += "<span class='pill pm'>Lleno</span>";
-  } else if(esManana && !claseHoyTermino){
-    // Mañana pero la de hoy aún no termina
-    var msg="Puedes agendar cuando termine la sesión de hoy ("+cl.hora+" hrs + 1 hora)";
-    html += "<button class='btn btn-sm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.3);font-size:10px' data-no-inscribir='"+encodeURIComponent(msg)+"'>¿Cuándo?</button>";
   } else {
-    html += "<button class='btn btn-lime btn-sm' data-inscribir='"+cl.id+"' data-fecha='"+f+"'>Agendar</button>";
+    // Reglas de agenda:
+    var msg = null;
+
+    // 1. ¿Tiene clase activa en esta misma semana y es esta semana?
+    if(semanaFecha === semanaHoy && tieneClaseEstaSemana && !inscrito){
+      // Buscar si la clase activa de esta semana ya terminó
+      var claseActivaTermino = true;
+      clasesFuturas.forEach(function(cf){
+        if(isoSemana(cf.fecha)===semanaHoy){
+          var clActiva=CLASES.find(function(c){return String(c.id)===cf.cid;});
+          if(clActiva&&clActiva.hora){
+            var p2=clActiva.hora.split(":"),hh2=parseInt(p2[0],10),mm2=parseInt(p2[1]||0,10);
+            var diaActiva=new Date(cf.fecha+"T00:00:00");
+            diaActiva.setHours(hh2,mm2+60,0,0);
+            if(ahora<diaActiva) claseActivaTermino=false;
+          }
+        }
+      });
+      if(!claseActivaTermino){
+        msg="Ya tienes una clase agendada esta semana. Podrás agendar la siguiente semana cuando termine tu clase actual.";
+      }
+    }
+
+    // 2. Solo 1 semana de anticipo máximo: semana actual o siguiente
+    if(!msg && semanaFecha !== semanaHoy && semanaFecha !== semanaProx){
+      msg="Solo puedes agendar con hasta 1 semana de anticipación.";
+    }
+
+    // 3. Semana siguiente: solo si ya terminó la clase de esta semana (si tiene)
+    if(!msg && semanaFecha === semanaProx && tieneClaseProxSemana && !inscrito){
+      msg="Ya tienes una clase agendada la siguiente semana.";
+    }
+
+    // 4. Si es esta semana y no tiene clase: puede agendar libremente
+    if(msg){
+      html += "<button class='btn btn-sm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.3);font-size:10px;max-width:80px;white-space:normal;line-height:1.2' data-no-inscribir='"+encodeURIComponent(msg)+"'>ℹ</button>";
+    } else {
+      html += "<button class='btn btn-lime btn-sm' data-inscribir='"+cl.id+"' data-fecha='"+f+"'>Agendar</button>";
+    }
   }
 
   html += "</div></div>";

@@ -849,6 +849,8 @@ function renderTabDeudas(s){
       ge("modal-cobrar-deuda").classList.add("open");
     });
   });
+}
+
 function renderTabInfo(s){
   var html="<div class='sec' style='padding-bottom:20px'>";
   html+="<div class='f2' style='margin-bottom:12px'><div><div style='font-size:11px;color:var(--muted)'>Teléfono</div><div style='font-size:14px;margin-top:3px'>"+(s.numero||"—")+"</div></div>";
@@ -875,6 +877,70 @@ function renderTabInfo(s){
     }
   });
   ge("btn-editar-soc").addEventListener("click",function(){abrirEditarSoc(s.id);});
+}
+
+// ── SEGUIMIENTO (admin detalle) ───────────────────────────────
+function renderTabSeguimiento(s){
+  var html="<div class='sec' style='padding-bottom:20px'>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Nuevo registro</div>";
+  html+="<div class='card' style='margin-bottom:14px'>";
+  html+="<div class='f2'>";
+  html+="<div class='fr'><label>Peso (kg)</label><input type='number' id='seg-peso' placeholder='75.5' step='0.1' inputmode='decimal'></div>";
+  html+="<div class='fr'><label>IMC</label><input type='number' id='seg-imc' placeholder='22.5' step='0.1' inputmode='decimal'></div>";
+  html+="</div><div class='f2' style='margin-top:8px'>";
+  html+="<div class='fr'><label>Músculo (kg)</label><input type='number' id='seg-musculo' placeholder='32.0' step='0.1' inputmode='decimal'></div>";
+  html+="<div class='fr'><label>% Grasa</label><input type='number' id='seg-grasa' placeholder='18.5' step='0.1' inputmode='decimal'></div>";
+  html+="</div><div class='fr' style='margin-top:8px'><label>Fecha de medición</label><input type='date' id='seg-fecha'></div>";
+  html+="<button class='btn bl bfull' style='margin-top:12px' id='btn-guardar-seg'>Guardar medidas</button>";
+  html+="</div>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial (últimos 12)</div>";
+  html+="<div id='seg-historial'><div style='font-size:13px;color:var(--muted)'>Cargando…</div></div>";
+  html+="</div>";
+  ge("det-content").innerHTML=html;
+  ge("seg-fecha").value=new Date().toISOString().slice(0,10);
+  GymDB.getSeguimiento(s.id,function(hist){
+    if(hist.length){
+      var ul=hist[0];
+      if(ul.peso)    ge("seg-peso").value=ul.peso;
+      if(ul.musculo) ge("seg-musculo").value=ul.musculo;
+      if(ul.imc)     ge("seg-imc").value=ul.imc;
+      if(ul.grasa)   ge("seg-grasa").value=ul.grasa;
+    }
+    var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    if(!hist.length){
+      ge("seg-historial").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
+    } else {
+      var hhtml="";
+      hist.slice(0,12).forEach(function(h){
+        var d=new Date((h.fecha||h.mes+"-01")+"T00:00:00");
+        var mn=meses[d.getMonth()]+" "+d.getFullYear();
+        hhtml+="<div class='card' style='margin-bottom:8px'>";
+        hhtml+="<div style='font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px'>"+mn+"</div>";
+        hhtml+="<div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center'>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:#4ECDC4'>"+(h.peso||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--green)'>"+(h.musculo||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--lime)'>"+(h.imc||"—")+"</div><div style='font-size:10px;color:var(--muted)'>IMC</div></div>";
+        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--orange)'>"+(h.grasa||"—")+"</div><div style='font-size:10px;color:var(--muted)'>% grasa</div></div>";
+        hhtml+="</div></div>";
+      });
+      ge("seg-historial").innerHTML=hhtml;
+    }
+  });
+  ge("btn-guardar-seg").addEventListener("click",function(){
+    var peso=parseFloat(ge("seg-peso").value)||null;
+    var musculo=parseFloat(ge("seg-musculo").value)||null;
+    var imc=parseFloat(ge("seg-imc").value)||null;
+    var grasa=parseFloat(ge("seg-grasa").value)||null;
+    var fecha=ge("seg-fecha").value||new Date().toISOString().slice(0,10);
+    if(!peso&&!musculo&&!imc&&!grasa){alert("Ingresa al menos un valor");return;}
+    GymDB.saveSeguimiento(s.id,fecha.slice(0,7),peso,musculo,imc,grasa,fecha,function(){
+      if(peso)    s.peso=peso;
+      if(musculo) s.musculo=musculo;
+      GymDB.setSocio(s);
+      mostrarToast("✓ Medidas guardadas");
+      renderTabSeguimiento(s);
+    });
+  });
 }
 
 // ── FORMULARIO SOCIO ──────────────────────────────────────────
@@ -956,12 +1022,16 @@ function guardarPago(){
   s.fecha_vencimiento=addDays(baseInicio,PLAN_DIAS[plan]||30);
 
   if(tipo==="parcial"&&PLAN_ABONOS[plan]&&PLAN_ABONOS[plan].length){
-    s.abonos=PLAN_ABONOS[plan].map(function(a,i){return{num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};});
+    s.abonos=PLAN_ABONOS[plan].map(function(a,i){
+      return{num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};
+    });
   } else {
     s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi}];
   }
   GymDB.setSocio(s);
-  SOCIOS = GymDB.getSocios();
+  SOCIOS=GymDB.getSocios();
+  // Refresh socioActual from updated list
+  socioActual=SOCIOS.find(function(x){return x.id===s.id;})||s;
   ge("modal-pago").classList.remove("open");
   renderDetalle();
 }
@@ -1327,13 +1397,8 @@ function renderGrafica(){
 
 // ── EVENTOS ───────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
-  _gymdbReady.then(function(){
-    // Datos listos — ocultar loading y arrancar
-    var ov=document.getElementById('ov-loading');
-    if(ov) ov.style.display='none';
-    recargarDatos();
 
-  // PIN login
+  // ── PIN: registrar ANTES de que cargue Supabase ─────────────
   document.querySelectorAll(".pin-key[data-n]").forEach(function(btn){
     btn.addEventListener("click",function(){
       if(pinBuf.length>=4)return;
@@ -1343,6 +1408,12 @@ document.addEventListener("DOMContentLoaded",function(){
   });
   ge("login-del").addEventListener("click",function(){pinBuf=pinBuf.slice(0,-1);actualizarDots();});
   ge("login-clear").addEventListener("click",function(){pinBuf="";actualizarDots();});
+
+  _gymdbReady.then(function(){
+    // Datos listos — ocultar loading y mostrar login
+    var ov=document.getElementById('ov-loading');
+    if(ov) ov.style.display='none';
+    recargarDatos();
 
   // Nav
   document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){

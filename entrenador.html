@@ -921,7 +921,7 @@ function renderTabSeguimiento(s){
   html+="</div><div class='fr' style='margin-top:8px'><label>Fecha de medición</label><input type='date' id='seg-fecha' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
   html+="<button class='btn bl bfull' style='margin-top:12px' id='btn-guardar-seg'>Guardar medidas</button>";
   html+="</div>";
-  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial</div>";
+  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial (últimos 12)</div>";
   html+="<div id='seg-historial'><div style='font-size:13px;color:var(--muted)'>Cargando…</div></div>";
   html+="</div>";
   ge("det-content").innerHTML=html;
@@ -1079,6 +1079,8 @@ function guardarPago(){
 
   GymDB.setSocio(s);
   SOCIOS=GymDB.getSocios();
+  // Refresh socioActual from updated list
+  socioActual=SOCIOS.find(function(x){return x.id===s.id;})||s;
   ge("modal-pago").classList.remove("open");
   detTab="membresia";
   renderDetalle();
