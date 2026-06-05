@@ -173,7 +173,10 @@ textarea{resize:vertical;min-height:70px;}
 <div class="screen" id="screen-inicio">
   <div class="hdr">
     <div><h1>Inicio</h1><small id="hdr-fecha"></small></div>
-    <div class="hdr-r"><button class="btn bl bsm" id="btn-checkin">&#10003; Check-in</button></div>
+    <div class="hdr-r">
+      <button class="btn bd bsm" id="btn-sync-inicio">↻</button>
+      <button class="btn bl bsm" id="btn-checkin">&#10003; Check-in</button>
+    </div>
   </div>
   <div style="padding:0 16px;margin-bottom:12px">
     <div class="sbox" style="display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px">
@@ -712,6 +715,7 @@ function confirmarCobro(){
     producto:_cobroPendiente.producto, monto:_cobroPendiente.monto,
     vendedor_id:"admin", vendedor_nombre:"Administrador"
   });
+  DEUDAS = GymDB.getAllDeudas(); // refrescar para que inicio refleje el cambio
   ge("modal-cobrar-deuda").classList.remove("open");
   _cobroPendiente=null;
   mostrarToast("✓ Cobro registrado");
@@ -979,7 +983,11 @@ function guardarSoc(){
 function _prepModalPago(){ poblarSelectPlanes(); }
 function abrirModalPago(s){
   ge("pago-plan").value=s.plan||"Mensual";
-  ge("pago-inicio").value=new Date().toISOString().slice(0,10);
+  // Si tiene membresía activa, sugerir la fecha de vencimiento como inicio
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  var fvActual=s.fecha_vencimiento?new Date(s.fecha_vencimiento+"T00:00:00"):null;
+  var defaultInicio=(fvActual&&fvActual>hoy)?s.fecha_vencimiento:new Date().toISOString().slice(0,10);
+  ge("pago-inicio").value=defaultInicio;
   ge("pago-tipo").value="completo";
   actualizarResumenPago();
   ge("modal-pago").classList.add("open");
@@ -1312,30 +1320,32 @@ function enPeriodo(fecha){
 function renderReporte(){
   var desde=ge("r-desde").value,hasta=ge("r-hasta").value;
   var modoWrap=ge("r-modo-wrap");
-  modoWrap.style.display=repTab==="socios"?"flex":"none";
+  modoWrap.style.display="none"; // filtro de modo eliminado
 
   var mh="",lh="";
   if(repTab==="socios"){
     var lista=SOCIOS.slice();
-    // Filtro periodo
+    // Filtro por fecha de alta
     if(desde||hasta){
       lista=lista.filter(function(s){
-        var okI=true,okV=true;
-        if(repModo==="inscripcion"||repModo==="ambos"){if(desde&&(s.fecha_inicio||"")<desde)okI=false;if(hasta&&(s.fecha_inicio||"")>hasta)okI=false;}
-        if(repModo==="visitas"||repModo==="ambos"){/* En producción filtrar por checkins */}
-        return repModo==="ambos"?okI&&okV:repModo==="inscripcion"?okI:okV;
+        if(desde&&(s.fecha_inicio||"")<desde) return false;
+        if(hasta&&(s.fecha_inicio||"")>hasta)  return false;
+        return true;
       });
     }
+    lista.sort(function(a,b){
+      var r=(a.fecha_inicio||"").localeCompare(b.fecha_inicio||"");
+      return repSortAsc?-r:r;
+    });
     var activos=lista.filter(function(s){return s.activo;}).length;
     var vencidos=lista.filter(function(s){return calcStatus(s)==="vencido";}).length;
-    var totalVis=lista.reduce(function(a,s){return a+s.visitas;},0);
+    var totalVis=lista.reduce(function(a,s){return a+(s.visitas||0);},0);
     mh=mbox(activos,"var(--green)","Activos")+mbox(vencidos,"var(--red)","Vencidos")+mbox(SOCIOS.filter(function(s){return !s.activo;}).length,"var(--muted)","Inactivos")+mbox(totalVis,"var(--lime)","Visitas");
     lista.forEach(function(s){
       var st=calcStatus(s);
-      var vis=CHECKINS.filter(function(c){return c.socio_id===s.id;}).length;
-      lh+=rfila(ini(s),avColor(st),"#"+s.id+" · "+s.nombre+" "+s.apellido_paterno,s.plan+" · "+pillSt(st),"<div style='font-size:10px;color:var(--muted)'>Alta: "+fF(s.fecha_inicio)+"</div><div style='font-family:\"Bebas Neue\",sans-serif;font-size:22px;color:var(--lime)'>"+vis+"</div>");
+      lh+=rfila(ini(s),avColor(st),"#"+s.id+" · "+s.nombre+" "+s.apellido_paterno,s.plan+" · Alta: "+fF(s.fecha_inicio),"<span class='pill "+(st==="aldia"?"pg":st==="vencehoy"?"po":"pr")+"'>Vence: "+fF(s.fecha_vencimiento)+"</span>");
     });
-  } else if(repTab==="checkins"){
+    } else if(repTab==="checkins"){
     var f=CHECKINS.filter(function(c){return enPeriodo(new Date().toISOString().slice(0,10));});
     mh=mbox(f.length,"var(--lime)","Check-ins")+mbox(new Set(f.map(function(c){return c.socio_id;})).size,"var(--green)","Socios");
     f.forEach(function(ci){
@@ -1427,6 +1437,10 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("ci-confirmar").addEventListener("click",confirmarCI);
   ge("ci-tab-cod").addEventListener("click",function(){ge("ci-panel-cod").style.display="block";ge("ci-panel-scan").style.display="none";this.style.background="var(--lime)";this.style.color="#080808";ge("ci-tab-scan").className="btn bd bsm";ge("ci-tab-scan").style="";});
   ge("ci-tab-scan").addEventListener("click",function(){ge("ci-panel-scan").style.display="block";ge("ci-panel-cod").style.display="none";this.style.background="var(--lime)";this.style.color="#080808";ge("ci-tab-cod").className="btn bsm";ge("ci-tab-cod").style="";});
+  ge("btn-sync-inicio").addEventListener("click",function(){
+    var b=this; b.textContent="…"; b.disabled=true;
+    GymDB.init().then(function(){ recargarDatos(); renderInicio(); b.textContent="↻"; b.disabled=false; mostrarToast("↻ Actualizado"); });
+  });
 
   // Socios
   // Modal cobrar deuda
@@ -1469,7 +1483,15 @@ document.addEventListener("DOMContentLoaded",function(){
   // Reportes
   ge("r-desde").addEventListener("change",renderReporte);
   ge("r-hasta").addEventListener("change",renderReporte);
-  ge("rep-tipo-sel").addEventListener("change",function(){repTab=this.value;renderReporte();});
+  ge("rep-tipo-sel").addEventListener("change",function(){
+    repTab=this.value;
+    if(repTab==="ventas"){
+      // Recargar ventas frescas de Supabase
+      GymDB.init().then(function(){ VENTAS=GymDB.getVentas(); renderReporte(); });
+    } else {
+      renderReporte();
+    }
+  });
   ge("btn-rep-sort").addEventListener("click",function(){
     repSortAsc=!repSortAsc;
     this.textContent=repSortAsc?"↑↓":"↓↑";

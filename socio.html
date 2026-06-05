@@ -938,8 +938,11 @@ function fFs(f){ return f?new Date(f+"T00:00:00").toLocaleDateString("es-MX",{da
 function toggleHistorialMemb(){
   var panel = ge("memb-historial-panel");
   if(panel.style.display!=="none"){ panel.style.display="none"; return; }
-  var hist = (SOCIO&&SOCIO.historial_membresias)||[];
-  var abonos = SOCIO&&SOCIO.abonos||[];
+  // Leer desde GymDB para obtener datos frescos
+  var socios = GymDB.getSocios();
+  var socioFresh = socios.find(function(x){return x.id===SOCIO_ID;})||SOCIO;
+  var hist = (socioFresh&&socioFresh.historial_membresias)||[];
+  var abonos = (socioFresh&&socioFresh.abonos)||[];
   if(!hist.length&&!abonos.length){ panel.innerHTML="<div style='font-size:12px;color:var(--muted);padding:8px 16px'>Sin historial de membresías</div>"; panel.style.display="block"; return; }
   var html="<div style='background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:8px'>";
   html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:10px 14px 6px'>Membresía activa</div>";
@@ -1392,40 +1395,35 @@ function renderCard(cl, ahora, diaObj, fecha, tieneClaseEstaSemana, tieneClasePr
   } else if(lleno){
     html += "<span class='pill pm'>Lleno</span>";
   } else {
-    // Reglas de agenda:
+    // Reglas de agenda (por clase individual, no por semana global):
     var msg = null;
 
-    // 1. ¿Tiene clase activa en esta misma semana y es esta semana?
-    if(semanaFecha === semanaHoy && tieneClaseEstaSemana && !inscrito){
-      // Buscar si la clase activa de esta semana ya terminó
+    // ¿Ya tiene agendada ESTA misma clase (mismo cl.id) en una fecha futura activa?
+    var yaAgendadaEstaCla = clasesFuturas.some(function(cf){
+      return cf.cid === String(cl.id);
+    });
+
+    if(yaAgendadaEstaCla){
+      // Buscar si la clase activa de este mismo tipo ya terminó
       var claseActivaTermino = true;
       clasesFuturas.forEach(function(cf){
-        if(isoSemana(cf.fecha)===semanaHoy){
-          var clActiva=CLASES.find(function(c){return String(c.id)===cf.cid;});
-          if(clActiva&&clActiva.hora){
-            var p2=clActiva.hora.split(":"),hh2=parseInt(p2[0],10),mm2=parseInt(p2[1]||0,10);
-            var diaActiva=new Date(cf.fecha+"T00:00:00");
-            diaActiva.setHours(hh2,mm2+60,0,0);
-            if(ahora<diaActiva) claseActivaTermino=false;
-          }
+        if(cf.cid === String(cl.id)){
+          var p2=(cl.hora||"").split(":"),hh2=parseInt(p2[0],10),mm2=parseInt(p2[1]||0,10);
+          var diaActiva=new Date(cf.fecha+"T00:00:00");
+          diaActiva.setHours(hh2,mm2+60,0,0);
+          if(ahora<diaActiva) claseActivaTermino=false;
         }
       });
       if(!claseActivaTermino){
-        msg="Ya tienes una clase agendada esta semana. Podrás agendar la siguiente semana cuando termine tu clase actual.";
+        msg="Ya tienes esta clase agendada. Podrás volver a agendar cuando termine tu sesión.";
       }
     }
 
-    // 2. Solo 1 semana de anticipo máximo: semana actual o siguiente
+    // Máximo 1 semana de anticipo
     if(!msg && semanaFecha !== semanaHoy && semanaFecha !== semanaProx){
       msg="Solo puedes agendar con hasta 1 semana de anticipación.";
     }
 
-    // 3. Semana siguiente: solo si ya terminó la clase de esta semana (si tiene)
-    if(!msg && semanaFecha === semanaProx && tieneClaseProxSemana && !inscrito){
-      msg="Ya tienes una clase agendada la siguiente semana.";
-    }
-
-    // 4. Si es esta semana y no tiene clase: puede agendar libremente
     if(msg){
       html += "<button class='btn btn-sm' style='background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.3);font-size:10px;max-width:80px;white-space:normal;line-height:1.2' data-no-inscribir='"+encodeURIComponent(msg)+"'>ℹ</button>";
     } else {

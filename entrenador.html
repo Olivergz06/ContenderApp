@@ -1014,8 +1014,11 @@ function abrirModalPago(s,titulo){
   ge("pago-titulo").textContent=titulo;
   ge("pago-plan").value=s.plan||"Mensual";
   ge("pago-tipo").value="completo";
-  var hoy=new Date().toISOString().slice(0,10);
-  ge("pago-fecha-inicio").value=hoy;
+  // Si tiene membresía activa, sugerir la fecha de vencimiento como inicio
+  var hoyDate=new Date(); hoyDate.setHours(0,0,0,0);
+  var fvActual=s.fecha_vencimiento?new Date(s.fecha_vencimiento+"T00:00:00"):null;
+  var defaultInicio=(fvActual&&fvActual>hoyDate)?s.fecha_vencimiento:new Date().toISOString().slice(0,10);
+  ge("pago-fecha-inicio").value=defaultInicio;
   actualizarResumenPago();
   ge("modal-pago").classList.add("open");
 }
