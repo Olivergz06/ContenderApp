@@ -107,6 +107,11 @@ var GymDB = (function () {
         s.id = String(s.id);
         s.abonos = (s.abonos||[]).sort(function(a,b){ return a.numero-b.numero; });
         s.abonos.forEach(function(a){ a.id = String(a.id); });
+        // Parse historial_membresias (stored as JSONB, may arrive as string)
+        if (typeof s.historial_membresias === 'string') {
+          try { s.historial_membresias = JSON.parse(s.historial_membresias); } catch(e){ s.historial_membresias=[]; }
+        }
+        if (!Array.isArray(s.historial_membresias)) s.historial_membresias = [];
         return s;
       });
       Object.keys(_pending).forEach(function(pid){
@@ -127,7 +132,14 @@ var GymDB = (function () {
       C.checkins[hoy()] = res[2] || [];
 
       C.ventas    = res[3]  || [];
-      C.membresias= res[4]  || [];
+      C.membresias= (res[4]||[]).map(function(m){
+        // Parse abonos (stored as JSONB, may arrive as string or array)
+        if (typeof m.abonos === 'string') {
+          try { m.abonos = JSON.parse(m.abonos); } catch(e){ m.abonos=[]; }
+        }
+        if (!Array.isArray(m.abonos)) m.abonos = [];
+        return m;
+      });
       C.clases    = (res[5]||[]).map(function(cl){
         if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
         if(!Array.isArray(cl.dias)) cl.dias=[];
@@ -207,7 +219,8 @@ var GymDB = (function () {
         notas:nd(socio.notas),color:socio.color||'#C8F135',
         vendedor_id:nd(socio.vendedor_id),vendedor_nombre:nd(socio.vendedor_nombre),
         ultima_visita:nd(socio.ultima_visita),
-        avisos_ids:JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[])
+        avisos_ids:JSON.stringify(Array.isArray(socio.avisos_ids)?socio.avisos_ids:[]),
+        historial_membresias:JSON.stringify(Array.isArray(socio.historial_membresias)?socio.historial_membresias:[])
       };
       if(idx>-1){
         C.socios[idx]=socio;
@@ -410,7 +423,7 @@ var GymDB = (function () {
     // ── CATÁLOGO ────────────────────────────────────────────────
     getMembresias:  function()    { return deepCopy(C.membresias); },
     saveMembresias: function(arr) {
-      _syncCat('membresias', C.membresias, arr, ['nombre','dias','precio','descripcion']);
+      _syncCat('membresias', C.membresias, arr, ['nombre','dias','precio','descripcion','abonos']);
       C.membresias = arr;
       bump();
     },
