@@ -338,14 +338,15 @@ input:focus,select:focus{border-color:var(--lime);}
 <!-- ═══ SCREEN: INICIO ══════════════════════════════════════ -->
 <div class="screen" id="screen-inicio">
 <!-- HEADER -->
-<div class="hdr" style="position:relative">
+<div class="hdr">
   <div style="flex:1;min-width:0">
     <div class="hdr-nombre" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div>
     <!-- Dropdown de perfil -->
     <select id="sel-perfil" style="background:transparent;border:none;color:var(--lime);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;outline:none;padding:0;margin-top:2px;width:100%;cursor:pointer;-webkit-appearance:none"></select>
   </div>
-  <div class="av" id="s-av">CM</div>
-  <button id="btn-sync-inicio" style="position:absolute;top:14px;right:70px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:13px;cursor:pointer">↻</button>
+  <button id="btn-ir-perfiles" title="Cambiar perfil" style="background:var(--lime);border:none;border-radius:50%;width:36px;height:36px;font-size:18px;color:#080808;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">👤</button>
+  <div class="av" id="s-av" style="margin-left:8px">CM</div>
+  <button id="btn-sync-inicio" style="margin-left:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:13px;cursor:pointer">↻</button>
 </div>
 <div style="padding:2px 16px 10px;font-size:12px;color:var(--muted)" id="s-fecha"></div>
 
@@ -507,6 +508,7 @@ input:focus,select:focus{border-color:var(--lime);}
     <h1>Clases</h1>
     <small id="fecha-hoy">Agendadas hoy · Disponibles mañana</small>
   </div>
+  <button id="btn-sync-clases" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-size:13px;cursor:pointer">↻</button>
 </div>
 
 <!-- MIS CLASES INSCRITAS (resumen rápido) -->
@@ -592,7 +594,6 @@ input:focus,select:focus{border-color:var(--lime);}
   <button class="nav-item active" data-screen="inicio"><span class="nav-icon">🏠</span>Inicio</button>
   <button class="nav-item" data-screen="clases"><span class="nav-icon">📅</span>Clases</button>
   <button class="nav-item" data-screen="rutina"><span class="nav-icon">💪</span>Rutina</button>
-  <button class="nav-item" data-screen="perfiles"><span class="nav-icon">👤</span>Perfil</button>
 </nav>
 
 <!-- ═══ DATA + LÓGICA ════════════════════════════════════════ -->
@@ -623,7 +624,12 @@ function showScreen(id) {
   if(id === 'rutina')  { cargarRutinaDeGymDB(); renderDayBar(); renderDia(); }
 }
 
-// Registrar nav-items aquí donde showScreen ya existe
+// Registrar nav-items en DOMContentLoaded (showScreen ya existe arriba)
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.nav-item[data-screen]').forEach(function(btn){
+    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
+  });
+});
 
 
 // ── DATOS DESDE GYMDB (cargados async en DOMContentLoaded) ──
@@ -633,12 +639,7 @@ var PERFILES = [];        // se llena al hacer login
 var DEUDAS_POR_SOCIO = {};// alias de GymDB.getAllDeudas()
 
 function recargarTodo(){
-  CLASES=GymDB.getClases().map(function(cl){
-    if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
-    if(!Array.isArray(cl.dias)) cl.dias=[];
-    return cl;
-  });
-  INSCRITOS        = GymDB.getAllInscritos();
+  _recargarClases();
   DEUDAS_POR_SOCIO = GymDB.getAllDeudas();
   if(!SOCIO) return;
   var sf=GymDB.getSocios().find(function(x){return x.id===SOCIO.id;});
@@ -1065,6 +1066,16 @@ document.getElementById("btn-guardar-seg").addEventListener("click",function(){
   });
 });
 
+// ── RECARGAR CLASES (global para usarse en varios lugares) ───
+function _recargarClases(){
+  CLASES=GymDB.getClases().map(function(cl){
+    if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
+    if(!Array.isArray(cl.dias)) cl.dias=[];
+    return cl;
+  });
+  INSCRITOS=GymDB.getAllInscritos();
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded",function(){
   // ★ BOTÓN + AGREGAR CUENTA ★ — primero para garantizar su registro
@@ -1076,6 +1087,11 @@ document.addEventListener("DOMContentLoaded",function(){
   ge('add-cancelar').addEventListener('click', function(){ ge('modal-add-cuenta').classList.remove('open'); });
   ge('add-code').addEventListener('keydown', function(e){ if(e.key==='Enter') cargarCuenta(); });
 
+  // ★ BOTÓN PERFIL AMARILLO (esquina superior derecha en inicio) ★
+  ge('btn-ir-perfiles').addEventListener('click', function(){
+    showScreen('perfiles');
+  });
+
   // Popup pago
   ge("popup-ok").addEventListener("click", function(){
     _popupPagoVisto = true;
@@ -1086,15 +1102,6 @@ document.addEventListener("DOMContentLoaded",function(){
   });
   ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
 
-  // Botón ↻ clases
-  function _recargarClases(){
-    CLASES=GymDB.getClases().map(function(cl){
-      if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
-      if(!Array.isArray(cl.dias)) cl.dias=[];
-      return cl;
-    });
-    INSCRITOS=GymDB.getAllInscritos();
-  }
   ge("btn-sync-clases").addEventListener("click",function(){
     var b=this; b.textContent="…"; b.disabled=true;
     GymDB.init().then(function(){
@@ -1122,12 +1129,7 @@ document.addEventListener("DOMContentLoaded",function(){
   _gymdbReady.then(function(){
     var ov=document.getElementById('ov-loading');
     if(ov) ov.style.display='none';
-    CLASES   = GymDB.getClases().map(function(cl){
-      if(typeof cl.dias==='string') cl.dias=cl.dias.replace(/[{}]/g,'').split(',').map(function(d){return d.trim();});
-      if(!Array.isArray(cl.dias)) cl.dias=[];
-      return cl;
-    });
-    INSCRITOS= GymDB.getAllInscritos();
+    _recargarClases();
     renderPerfiles();
   }).catch(function(e){
     console.error('[GymDB]',e);
