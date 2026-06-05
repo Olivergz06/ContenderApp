@@ -793,19 +793,18 @@ function renderAbonos(){
 // ── POPUP PAGO PENDIENTE ──────────────────────────────────────
 var _popupPagoVisto = false;
 function checkPopupPago(){
-  if(_popupPagoVisto) return;
-
   // Solo entre 4pm y 9pm hora Ciudad de México
   var ahora = new Date();
   var horaMx = new Date(ahora.toLocaleString("en-US", {timeZone:"America/Mexico_City"}));
   var h = horaMx.getHours();
   if(h < 16 || h >= 21) return; // fuera del horario
 
-  // Solo una vez al día — guardar la fecha en localStorage
+  // Solo una vez al día por socio — clave incluye socio ID
   var hoyStr = horaMx.toISOString().slice(0,10);
+  var storageKey = 'contender_popup_pago_' + (SOCIO ? SOCIO.id : 'x');
   try {
-    var ultimaVez = localStorage.getItem('contender_popup_pago');
-    if(ultimaVez === hoyStr) return; // ya se mostró hoy
+    var ultimaVez = localStorage.getItem(storageKey);
+    if(ultimaVez === hoyStr) return; // ya se mostró hoy para este socio
   } catch(e){}
 
   var hoy    = new Date(); hoy.setHours(0,0,0,0);
@@ -830,7 +829,7 @@ function checkPopupPago(){
   if(!textos.length) return;
 
   // Guardar que ya se mostró hoy
-  try { localStorage.setItem('contender_popup_pago', hoyStr); } catch(e){}
+  try { localStorage.setItem(storageKey, hoyStr); } catch(e){}
 
   ge("popup-texto").textContent = textos.join(" ");
   ge("popup-pago").classList.add("open");
@@ -1094,11 +1093,10 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // Popup pago
   ge("popup-ok").addEventListener("click", function(){
-    _popupPagoVisto = true;
     ge("popup-pago").classList.remove("open");
   });
   ge('popup-pago') && ge('popup-pago').addEventListener('click', function(e){
-    if(e.target===this){ _popupPagoVisto=true; this.classList.remove('open'); }
+    if(e.target===this){ this.classList.remove('open'); }
   });
   ge('modal-add-cuenta') && ge('modal-add-cuenta').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
 
@@ -1146,7 +1144,7 @@ document.addEventListener("DOMContentLoaded",function(){
   ge("sel-perfil").addEventListener("change", function(){
     SOCIO = PERFILES.find(function(p){ return p.id===this.value; }, this) || PERFILES[0];
     SOCIO_ID = SOCIO.id;
-    _popupPagoVisto = false; // nuevo perfil → permitir popup de nuevo
+    // nuevo perfil → el popup se controla por localStorage por socio
     CLASES   = GymDB.getClases();
     INSCRITOS= GymDB.getAllInscritos();
     cargarRutinaDeGymDB();

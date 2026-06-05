@@ -259,7 +259,8 @@ textarea{resize:vertical;min-height:70px;}
     </div>
   </div>
   <div class="tabs">
-    <button class="tab active" data-det="membresia">Membresía y Deudas</button>
+    <button class="tab active" data-det="membresia">Membresía</button>
+    <button class="tab" data-det="deudas">Deudas</button>
     <button class="tab" data-det="info">Información</button>
     <button class="tab" data-det="seguimiento">Seguimiento</button>
   </div>
@@ -417,6 +418,7 @@ function poblarSelectPlanes(){
     if(!m.nombre) return;
     PLAN_DIAS[m.nombre]   = m.dias   || 30;
     PLAN_PRECIO[m.nombre] = m.precio || 0;
+    if(m.abonos&&m.abonos.length) PLAN_ABONOS[m.nombre]=m.abonos;
   });
   // Llenar cada select de plan en la página
   var ids = ["f-plan","pago-plan"];
@@ -503,7 +505,8 @@ function showScreen(id){
   });
   if(id==="inicio")  renderInicio();
   if(id==="socios")  renderSocios();
-  if(id==="detalle") setTimeout(renderDetalle,0);
+  if(id==="ventas")  renderVentas();
+  if(id==="detalle") { recargarDatos(); setTimeout(renderDetalle,0); }
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────
@@ -597,15 +600,8 @@ function renderVentas(){
   });
 }
 
-function showScreen(id){
-  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
-  ge("screen-"+id).classList.add("active");
-  document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){
-    b.classList.toggle("active",b.dataset.screen===id);
-  });
-  if(id==="socios")  renderSocios();
-  if(id==="ventas")  renderVentas();
-}
+// showScreen is defined earlier above and handles all screens
+// (this duplicate was removed — do not add another showScreen here)
 
 function confirmarCobro(){
   if(!_cobroPendiente) return;
@@ -769,8 +765,9 @@ function renderDetalle(){
   var s=socioActual;
   ge("det-nombre").textContent=s.nombre+" "+s.apellido_paterno;
   ge("det-sub").textContent="#"+s.id+" · "+s.plan;
-  if(detTab==="membresia") renderMembresia(s);
-  else if(detTab==="info") renderInfoGeneral(s);
+  if(detTab==="membresia")   renderMembresia(s);
+  else if(detTab==="deudas") renderTabDeudas(s);
+  else if(detTab==="info")   renderInfoGeneral(s);
   else if(detTab==="seguimiento") renderTabSeguimiento(s);
 }
 
@@ -1051,22 +1048,37 @@ function guardarPago(){
   var fi   =ge("pago-fecha-inicio").value;
   var s    =socioActual; if(!s||!fi) return;
 
-  var dias =PLAN_DIAS[plan]||30;
-  s.plan             =plan;
-  s.fecha_inicio     =fi;
-  s.fecha_vencimiento=addDays(fi,dias);
+  // ── Guardar historial antes de sobreescribir ──────────────────
+  if(!s.historial_membresias) s.historial_membresias=[];
+  if(s.plan&&s.fecha_vencimiento){
+    s.historial_membresias.push({
+      plan:s.plan, fecha_inicio:s.fecha_inicio||fi,
+      fecha_vencimiento:s.fecha_vencimiento,
+      precio:PLAN_PRECIO[s.plan]||0,
+      abonos:(s.abonos||[]).slice()
+    });
+  }
+
+  // ── Sumar días si la membresía sigue activa ───────────────────
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  var fvActual=s.fecha_vencimiento?new Date(s.fecha_vencimiento+"T00:00:00"):null;
+  var baseInicio=(fvActual&&fvActual>hoy)?s.fecha_vencimiento:fi;
+
+  var dias=PLAN_DIAS[plan]||30;
+  s.plan=plan;
+  s.fecha_inicio=fi;
+  s.fecha_vencimiento=addDays(baseInicio,dias);
 
   if(tipo==="parcial"&&PLAN_ABONOS[plan]&&PLAN_ABONOS[plan].length){
     s.abonos=PLAN_ABONOS[plan].map(function(a,i){
       return {num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};
     });
   } else {
-    // Pago único: un solo abono marcado como pagado
     s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi}];
   }
 
   GymDB.setSocio(s);
-  SOCIOS = GymDB.getSocios();
+  SOCIOS=GymDB.getSocios();
   ge("modal-pago").classList.remove("open");
   detTab="membresia";
   renderDetalle();
