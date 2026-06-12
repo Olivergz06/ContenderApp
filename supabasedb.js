@@ -307,15 +307,17 @@ var GymDB = (function () {
       get('seguimiento_socio','select=*&socio_id=eq.'+socioId+'&order=fecha.desc,mes.desc')
         .then(function(r){ callback(Array.isArray(r)?r:[]); });
     },
-    saveSeguimiento: function(socioId, mes, peso, musculo, imc, grasa, fecha, callback) {
-      var hoy = fecha || new Date().toISOString().slice(0,10);
+    saveSeguimiento: function(socioId, fechaOmes, peso, musculo, imc, grasa, fecha, callback) {
+      var fechaReal = fecha || new Date().toISOString().slice(0,10);
       var data = {
-        socio_id: socioId, mes: mes,
+        socio_id: socioId,
+        mes: fechaReal.slice(0,7),   // still populate mes for legacy reads
         peso: peso||null, musculo: musculo||null,
         imc: imc||null, grasa: grasa||null,
-        fecha: hoy
+        fecha: fechaReal
       };
-      get('seguimiento_socio','select=id&socio_id=eq.'+socioId+'&mes=eq.'+mes)
+      // Upsert por fecha exacta (no por mes): si ya existe ese día actualiza, si no inserta
+      get('seguimiento_socio','select=id&socio_id=eq.'+socioId+'&fecha=eq.'+fechaReal)
         .then(function(r){
           if(Array.isArray(r)&&r.length>0){
             pat('seguimiento_socio','id=eq.'+r[0].id, data);
@@ -379,7 +381,11 @@ var GymDB = (function () {
 
     // ── CHECKINS ────────────────────────────────────────────────
     getAllCheckins:    function()      { return C.checkins; },
-    getTodayCheckins: function()      { return C.checkins[hoy()] || []; },
+    getTodayCheckins: function()      {
+      // Si hay checkins de días anteriores en cache los ignora automáticamente
+      // porque hoy() devuelve la fecha actual
+      return C.checkins[hoy()] || [];
+    },
     getCheckinsByFecha: function(f)   { return C.checkins[f]    || []; },
     saveTodayCheckins: function(arr)  { C.checkins[hoy()] = arr; },
 

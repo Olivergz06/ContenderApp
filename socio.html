@@ -320,7 +320,7 @@ input:focus,select:focus{border-color:var(--lime);}
     <div id="login-error" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:10px;text-align:center"></div>
     <button id="btn-login" style="width:100%;padding:16px;background:var(--lime);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;color:#080808;cursor:pointer">Entrar</button>
     <div style="margin-top:8px;font-size:11px;color:#555;text-align:center">Demo: tel <code style="color:#C8F135">7221234567</code> · código <code style="color:#C8F135">001</code></div>
-    <button onclick="if(confirm('¿Borrar todos los datos y volver al estado inicial?')){GymDB.reset();location.reload();}" style="margin-top:10px;background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.3);color:var(--red);border-radius:8px;padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer">↺ Reset datos demo</button>
+
   </div>
 </div>
 
@@ -632,11 +632,7 @@ function showScreen(id) {
 }
 
 // Registrar nav-items en DOMContentLoaded (showScreen ya existe arriba)
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('.nav-item[data-screen]').forEach(function(btn){
-    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
-  });
-});
+/* nav-items: movido al DOMContentLoaded principal */
 
 
 // ── DATOS DESDE GYMDB (cargados async en DOMContentLoaded) ──
@@ -1256,6 +1252,40 @@ document.addEventListener("DOMContentLoaded",function(){
       }
     }
   });
+
+  // ── NAV ITEMS (consolidado del bloque 1) ────────────────────
+document.querySelectorAll('.nav-item[data-screen]').forEach(function(btn){
+    btn.addEventListener('click', function(){ showScreen(this.dataset.screen); });
+  });
+
+  // ── CLASES: render inicial (consolidado del bloque 3) ───────
+renderFecha();
+  renderMisClases();
+  renderClasesDia();
+
+  // ── RUTINA: eventos (consolidado del bloque 4) ──────────────
+// La rutina se carga cuando se selecciona perfil en renderHeader → nada que hacer aquí
+  renderDayBar();
+  renderDia();
+
+  ge("btn-add").addEventListener("click",abrirModal);
+  ge("ex-guardar").addEventListener("click",guardarEjercicio);
+  ge("ex-cancelar").addEventListener("click",cerrarModal);
+  ge("ex-nombre").addEventListener("keydown",function(e){
+    if(e.key==="Enter") guardarEjercicio();
+  });
+  ge("modal-ex").addEventListener("click",function(e){
+    if(e.target===this) cerrarModal();
+  });
+  ge("sel-plantilla").addEventListener("change",function(){
+    if(!this.value) return;
+    if(confirm("¿Cambiar la rutina del día a "+PLANTILLAS[this.value].grupo+"? Se conservarán tus ejercicios agregados.")){
+      aplicarPlantilla(this.value);
+      if(SOCIO) GymDB.saveRutina(SOCIO.id, RUTINA);
+    } else {
+      this.value="";
+    }
+  });
 });
 
 
@@ -1500,11 +1530,7 @@ function renderFecha(){
   ge("fecha-hoy").textContent=str.charAt(0).toUpperCase()+str.slice(1);
 }
 
-document.addEventListener("DOMContentLoaded",function(){
-  renderFecha();
-  renderMisClases();
-  renderClasesDia();
-});
+/* clases render: consolidado en DOMContentLoaded principal */
 
 
 
@@ -1745,30 +1771,7 @@ function guardarEjercicio(){
 }
 
 // ── EVENTOS ───────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded",function(){
-  // La rutina se carga cuando se selecciona perfil en renderHeader → nada que hacer aquí
-  renderDayBar();
-  renderDia();
-
-  ge("btn-add").addEventListener("click",abrirModal);
-  ge("ex-guardar").addEventListener("click",guardarEjercicio);
-  ge("ex-cancelar").addEventListener("click",cerrarModal);
-  ge("ex-nombre").addEventListener("keydown",function(e){
-    if(e.key==="Enter") guardarEjercicio();
-  });
-  ge("modal-ex").addEventListener("click",function(e){
-    if(e.target===this) cerrarModal();
-  });
-  ge("sel-plantilla").addEventListener("change",function(){
-    if(!this.value) return;
-    if(confirm("¿Cambiar la rutina del día a "+PLANTILLAS[this.value].grupo+"? Se conservarán tus ejercicios agregados.")){
-      aplicarPlantilla(this.value);
-      if(SOCIO) GymDB.saveRutina(SOCIO.id, RUTINA);
-    } else {
-      this.value="";
-    }
-  });
-});
+/* rutina events: consolidado en DOMContentLoaded principal */
 
 
 </script>

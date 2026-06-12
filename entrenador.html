@@ -4,258 +4,181 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#080808">
-<title>Contender · Entrenador</title>
+<title>Contender · Trainer</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="supabasedb.js"></script>
+<script src="shared.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#080808;color:#F0EDE8;font-family:"DM Sans",sans-serif;max-width:430px;margin:0 auto;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-:root{--bg:#080808;--bg2:#111;--bg3:#1A1A1A;--border:#2A2A2A;--muted:#666;--text:#F0EDE8;--lime:#C8F135;--green:#30D158;--orange:#FF9F0A;--red:#FF3B30;--wa:#25D366;}
-.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:76px;animation:fadeIn .2s ease;}
-.screen.active{display:flex;}
-.screen-full{display:none;flex-direction:column;min-height:100vh;}
-.screen-full.active{display:flex;}
+:root{--bg:#080808;--bg2:#111;--bg3:#1A1A1A;--border:#2A2A2A;--muted:#666;--text:#F0EDE8;--lime:#C8F135;--green:#30D158;--orange:#FF9F0A;--red:#FF3B30;--wa:#25D366}
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:76px;animation:fadeIn .2s ease}
+.screen.active{display:flex}
+.screen-full{display:none;flex-direction:column;min-height:100vh}
+.screen-full.active{display:flex}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-/* NAV */
-.nav-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(8,8,8,.96);border-top:1px solid var(--border);display:flex;z-index:200;padding:8px 0 20px;backdrop-filter:blur(16px);}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:none;background:none;color:#444;font-size:9px;font-family:"DM Sans",sans-serif;font-weight:500;transition:color .15s;padding:4px 0;}
-.nav-item.active{color:var(--lime);}
-.nav-icon{font-size:20px;line-height:1;}
-/* LOGIN */
-.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;background:radial-gradient(ellipse 80% 50% at 50% 105%,rgba(200,241,53,.1),transparent 68%);}
-.login-marca{font-family:"Bebas Neue",sans-serif;font-size:56px;line-height:.9;letter-spacing:-2px;background:linear-gradient(160deg,#fff 25%,var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px;}
-.login-rol{font-size:11px;color:var(--lime);letter-spacing:4px;text-transform:uppercase;margin-bottom:48px;text-align:center;}
-.inp-wrap{width:100%;margin-bottom:12px;}
-.inp-wrap label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.8px;}
-.inp{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;color:var(--text);font-size:15px;font-family:"DM Sans",sans-serif;outline:none;transition:border-color .15s;}
-.inp:focus{border-color:var(--lime);}
-/* HEADER */
-.hdr{padding:20px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
-.hdr h1{font-family:"Bebas Neue",sans-serif;font-size:30px;letter-spacing:.5px;line-height:1;}
-.hdr small{font-size:12px;color:var(--muted);display:block;margin-top:2px;}
-.hdr-r{display:flex;gap:8px;align-items:center;flex-shrink:0;}
-/* CARDS */
-.card{background:var(--bg2);border-radius:14px;padding:13px 14px;margin-bottom:8px;border:1px solid var(--border);}
-.card.roja   {border-color:rgba(255,59,48,.35); background:rgba(255,59,48,.04);}
-.card.naranja{border-color:rgba(255,159,10,.35);background:rgba(255,159,10,.04);}
-.card.verde  {border-color:rgba(48,209,88,.3);  background:rgba(48,209,88,.04);}
-/* SOCIOS */
-.soc-card{background:var(--bg2);border-radius:14px;padding:13px 14px;margin-bottom:8px;border:1px solid var(--border);}
-.soc-card.aldia   {border-left:3px solid var(--green);}
-.soc-card.vencehoy{border-left:3px solid var(--orange);}
-.soc-card.vencido {border-left:3px solid var(--red);}
-.soc-fila{display:flex;align-items:center;gap:10px;}
-.soc-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#080808;flex-shrink:0;}
-.soc-info{flex:1;min-width:0;}
-.soc-nombre{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.soc-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-/* CHECK-IN ROW */
-.ci-row{background:var(--bg2);border-radius:12px;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.ci-av{width:32px;height:32px;border-radius:50%;background:var(--lime);color:#080808;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ci-info{flex:1;min-width:0;}
-.ci-nombre{font-size:13px;font-weight:700;}
-.ci-sub{font-size:10px;color:var(--muted);margin-top:1px;}
-/* ABONO ROW */
-.abono-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
-.abono-row:last-child{border-bottom:none;}
-.abono-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-.abono-num.ok  {background:rgba(48,209,88,.15);color:var(--green);}
-.abono-num.pend{background:rgba(255,159,10,.15);color:var(--orange);}
-.abono-num.venc{background:rgba(255,59,48,.15); color:var(--red);}
-/* PILLS */
-.pill{border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;display:inline-block;white-space:nowrap;}
-.pg{background:rgba(48,209,88,.15);color:var(--green);}
-.po{background:rgba(255,159,10,.15);color:var(--orange);}
-.pr{background:rgba(255,59,48,.15);color:var(--red);}
-.pm{background:var(--bg3);color:var(--muted);}
-/* BTNS */
-.btn{border:none;border-radius:10px;padding:8px 13px;font-family:"DM Sans",sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:transform .1s;white-space:nowrap;}
-.btn:active{transform:scale(.96);}
-.bl{background:var(--lime);color:#080808;}
-.bd{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
-.bwa{background:var(--wa);color:#fff;}
-.br{background:rgba(255,59,48,.12);color:var(--red);border:1px solid rgba(255,59,48,.3);}
-.bg2b{background:rgba(48,209,88,.12);color:var(--green);border:1px solid rgba(48,209,88,.3);}
-.bsm{padding:6px 10px;font-size:11px;border-radius:8px;}
-.bfull{width:100%;padding:13px;font-size:14px;justify-content:center;border-radius:12px;}
-/* TABS */
-.tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 16px;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px;}
-.tabs::-webkit-scrollbar{display:none;}
-.tab{flex-shrink:0;padding:8px 14px 10px;font-size:12px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s;}
-.tab.active{color:var(--lime);border-bottom-color:var(--lime);}
-/* FORMS */
-.sec{padding:0 16px;}
-.fr{margin-bottom:12px;}
-.fr label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.8px;}
-.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;font-family:"DM Sans",sans-serif;width:100%;outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s;}
-input:focus,select:focus,textarea:focus{border-color:var(--lime);}
-::placeholder{color:#444;}
-textarea{resize:vertical;min-height:70px;}
-/* MODAL */
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(5px);}
-.modal-ov.open{display:flex;}
-.modal{background:var(--bg2);border-radius:22px 22px 0 0;padding:24px 16px 36px;width:100%;max-width:430px;border:1px solid var(--border);border-bottom:none;animation:slideUp .25s ease;max-height:90vh;overflow-y:auto;}
+.nav-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(8,8,8,.96);border-top:1px solid var(--border);display:flex;z-index:200;padding:6px 0 18px;backdrop-filter:blur(16px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:none;background:none;color:#444;font-size:8px;font-family:"DM Sans",sans-serif;font-weight:500;transition:color .15s;padding:4px 0}
+.nav-item.active{color:var(--lime)}
+.nav-icon{font-size:18px;line-height:1}
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;background:radial-gradient(ellipse 80% 50% at 50% 105%,rgba(200,241,53,.1),transparent 68%)}
+.login-marca{font-family:"Bebas Neue",sans-serif;font-size:56px;line-height:.9;letter-spacing:-2px;background:linear-gradient(160deg,#fff 25%,var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.login-rol{font-size:11px;color:var(--lime);letter-spacing:4px;text-transform:uppercase;margin-bottom:32px}
+.hdr{padding:18px 16px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.hdr h1{font-family:"Bebas Neue",sans-serif;font-size:30px;letter-spacing:.5px;line-height:1}
+.hdr small{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.hdr-r{display:flex;gap:7px;align-items:center;flex-shrink:0}
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 16px;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 13px 10px;font-size:12px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab.active{color:var(--lime);border-bottom-color:var(--lime)}
+.card{background:var(--bg2);border-radius:14px;padding:13px 14px;margin-bottom:8px;border:1px solid var(--border)}
+.card.verde{border-color:rgba(48,209,88,.3);background:rgba(48,209,88,.04)}
+.card.naranja{border-color:rgba(255,159,10,.35);background:rgba(255,159,10,.04)}
+.card.roja{border-color:rgba(255,59,48,.35);background:rgba(255,59,48,.04)}
+.soc-card{background:var(--bg2);border-radius:14px;padding:13px 14px;margin-bottom:8px;border:1px solid var(--border)}
+.soc-card.aldia{border-left:3px solid var(--green)}
+.soc-card.vencehoy{border-left:3px solid var(--orange)}
+.soc-card.vencido{border-left:3px solid var(--red)}
+.soc-fila{display:flex;align-items:center;gap:10px}
+.soc-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#080808;flex-shrink:0}
+.soc-info{flex:1;min-width:0}
+.soc-nombre{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soc-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ci-row{background:var(--bg2);border-radius:12px;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer}
+.ci-av{width:32px;height:32px;border-radius:50%;background:var(--lime);color:#080808;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.abono-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.abono-row:last-child{border-bottom:none}
+.abono-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.aok{background:rgba(48,209,88,.15);color:var(--green)}
+.apend{background:rgba(255,159,10,.15);color:var(--orange)}
+.avenc{background:rgba(255,59,48,.15);color:var(--red)}
+.pill{border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;display:inline-block;white-space:nowrap}
+.pg{background:rgba(48,209,88,.15);color:var(--green)}
+.po{background:rgba(255,159,10,.15);color:var(--orange)}
+.pr{background:rgba(255,59,48,.15);color:var(--red)}
+.pm{background:var(--bg3);color:var(--muted)}
+.btn{border:none;border-radius:10px;padding:8px 13px;font-family:"DM Sans",sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:transform .1s;white-space:nowrap}
+.btn:active{transform:scale(.96)}
+.bl{background:var(--lime);color:#080808}
+.bd{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.bwa{background:var(--wa);color:#fff}
+.br{background:rgba(255,59,48,.12);color:var(--red);border:1px solid rgba(255,59,48,.3)}
+.bsm{padding:6px 10px;font-size:11px;border-radius:8px}
+.bfull{width:100%;padding:13px;font-size:14px;justify-content:center;border-radius:12px}
+.sec{padding:0 16px}
+.fr{margin-bottom:12px}
+.fr label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.8px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;font-family:"DM Sans",sans-serif;width:100%;outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--lime)}
+::placeholder{color:#444}
+textarea{resize:vertical;min-height:70px}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(5px)}
+.modal-ov.open{display:flex}
+.modal{background:var(--bg2);border-radius:22px 22px 0 0;padding:24px 16px 36px;width:100%;max-width:430px;border:1px solid var(--border);border-bottom:none;animation:slideUp .25s ease;max-height:90vh;overflow-y:auto}
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-.mhandle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
-.modal h2{font-family:"Bebas Neue",sans-serif;font-size:24px;margin-bottom:16px;}
-.mbtns{display:flex;gap:8px;margin-top:16px;}
-/* SORT */
-.sort-wrap{padding:0 16px;margin-bottom:10px;display:flex;gap:8px;align-items:center;}
-.sort-lbl{font-size:11px;color:var(--muted);white-space:nowrap;}
-.sort-sel{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:"DM Sans",sans-serif;outline:none;appearance:none;-webkit-appearance:none;}
-/* PROG BAR */
-.prog-wrap{background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;margin-top:6px;}
-.prog-fill{height:100%;border-radius:4px;background:var(--lime);transition:width .6s;}
-/* EMPTY */
-.empty{text-align:center;padding:36px 20px;color:var(--muted);}
-.empty .ico{font-size:36px;margin-bottom:10px;}
-.empty p{font-size:13px;}
-.nav-ph{height:76px;}
-/* STAT BOX */
-.stat2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 16px 12px;}
-.sbox{background:var(--bg2);border-radius:12px;padding:12px 10px;text-align:center;border:1px solid var(--border);}
-.snum{font-family:"Bebas Neue",sans-serif;font-size:28px;line-height:1;}
-.slbl{font-size:10px;color:var(--muted);margin-top:3px;}
-/* PIN DOTS */
-.pin-dots{display:flex;gap:12px;margin:8px 0;}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .15s;}
-.pin-dot.filled{background:var(--lime);border-color:var(--lime);}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.pin-key{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:15px;font-size:20px;font-weight:700;color:var(--text);cursor:pointer;font-family:"DM Sans",sans-serif;}
-.pin-key:active{background:var(--border);}
-.pin-key.sm{font-size:12px;color:var(--muted);}
+.mhandle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.modal h2{font-family:"Bebas Neue",sans-serif;font-size:24px;margin-bottom:16px}
+.mbtns{display:flex;gap:8px;margin-top:16px}
+.prog-wrap{background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;border-radius:4px;background:var(--lime);transition:width .6s}
+.sbox{background:var(--bg2);border-radius:12px;padding:10px 6px;text-align:center;border:1px solid var(--border)}
+.snum{font-family:"Bebas Neue",sans-serif;font-size:28px;line-height:1}
+.slbl{font-size:10px;color:var(--muted);margin-top:3px}
+.empty{text-align:center;padding:36px 20px;color:var(--muted)}
+.empty .ico{font-size:36px;margin-bottom:10px}
+.empty p{font-size:13px}
+.nav-ph{height:76px}
+.lbl-sec{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin:4px 0 8px}
+.lbl-campo{font-size:11px;color:var(--muted)}
+.val-campo{font-size:14px;margin-top:3px}
 </style>
 </head>
 <body>
 
-<!-- ═══ LOGIN ════════════════════════════════════════════════ -->
+<!-- LOADING -->
 <div id="ov-loading" style="position:fixed;inset:0;background:#080808;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;gap:12px">
   <div style="font-family:'Bebas Neue',cursive;font-size:40px;color:#C8F135;letter-spacing:3px">CONTENDER</div>
-  <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#555">Conectando con Supabase...</div>
+  <div style="font-size:13px;color:#555">Conectando…</div>
   <div id="ov-err" style="font-size:11px;color:#FF3B30;display:none;max-width:280px;text-align:center"></div>
 </div>
+
+<!-- LOGIN -->
 <div class="screen-full active" id="screen-login">
   <div class="login-wrap">
     <div class="login-marca">CONTENDER<br>CLUB</div>
-    <div class="login-rol">&#127947; Entrenador</div>
-    <div class="inp-wrap">
+    <div class="login-rol">🏋 Entrenador</div>
+    <div class="fr" style="width:100%;max-width:320px">
       <label>Número de celular</label>
-      <input class="inp" type="tel" id="login-tel" placeholder="5512345678" inputmode="numeric">
+      <input type="tel" id="login-tel" placeholder="5512345678" inputmode="numeric">
     </div>
-    <div class="inp-wrap">
+    <div class="fr" style="width:100%;max-width:320px">
       <label>Código de entrenador</label>
-      <input class="inp" type="text" id="login-code" placeholder="TRAINER01">
+      <input type="text" id="login-code" placeholder="TRAINER01">
     </div>
-    <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px;text-align:center" id="login-err"></div>
-    <button style="width:100%;padding:16px;background:var(--lime);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;color:#080808;cursor:pointer" id="btn-login">Entrar</button>
+    <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:12px;text-align:center" id="login-err"></div>
+    <button style="width:100%;max-width:320px;padding:16px;background:var(--lime);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:16px;color:#080808;cursor:pointer" id="btn-login">Entrar</button>
   </div>
 </div>
 
-<!-- ═══ INICIO: CHECK-INS ════════════════════════════════════ -->
+<!-- INICIO -->
 <div class="screen" id="screen-inicio">
   <div class="hdr">
-    <div><div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div><div id="hdr-trainer-nombre" style="font-size:13px;font-weight:700;color:var(--text)"></div><small id="hdr-fecha"></small></div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--lime)">CONTENDER CLUB</div>
+      <div id="hdr-trainer-nombre" style="font-size:13px;font-weight:700"></div>
+      <small id="hdr-fecha"></small>
+    </div>
     <div class="hdr-r">
-      <button class="btn bl bsm" id="btn-checkin">&#10003; Check-in</button>
+      <button class="btn bd bsm" id="btn-sync-inicio">↻</button>
+      <button class="btn bl bsm" id="btn-checkin">✓ Check-in</button>
     </div>
   </div>
   <div style="padding:0 16px;margin-bottom:12px">
     <div class="sbox" style="display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px">
-      <div class="snum" id="ci-count" style="color:var(--lime)">0</div>
+      <div class="snum" id="st-ci" style="color:var(--lime)">0</div>
       <div class="slbl" style="text-align:left">Check-ins<br>hoy</div>
     </div>
   </div>
-  <div style="padding:0 16px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Lista de hoy</div>
+  <div style="padding:0 16px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Hoy</div>
   <div style="padding:0 16px" id="lista-ci"></div>
   <div class="nav-ph"></div>
 </div>
 
-<!-- ═══ SOCIOS: LISTA ════════════════════════════════════════ -->
+<!-- SOCIOS -->
 <div class="screen" id="screen-socios">
   <div class="hdr">
     <div><h1>Socios</h1></div>
     <div class="hdr-r">
-      <button class="btn bd bsm" id="btn-sync-tr">↻</button>
-      <button class="btn bl bsm" id="btn-nuevo-socio">+ Agregar</button>
+      <button class="btn bd bsm" id="btn-sync-socios">↻</button>
+      <button class="btn bl bsm" id="btn-nuevo-soc">+ Agregar</button>
     </div>
   </div>
-  <div class="sw" style="padding:0 16px;margin-bottom:8px">
-    <input style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;width:100%;outline:none;" type="text" id="soc-buscar" placeholder="&#128269; Buscar nombre, código, plan…">
+  <div style="padding:0 16px;margin-bottom:8px">
+    <input style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;width:100%;outline:none" type="text" id="soc-buscar" placeholder="🔍 Buscar…">
   </div>
-  <div class="sort-wrap">
-    <span class="sort-lbl">Ordenar:</span>
-    <select class="sort-sel" id="sort-sel">
+  <div style="display:flex;gap:8px;align-items:center;padding:0 16px;margin-bottom:10px">
+    <select id="sort-sel" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;appearance:none">
       <option value="id">Por código</option>
-      <option value="nombre">Por nombre A-Z</option>
+      <option value="nombre">Por nombre</option>
       <option value="vencimiento">Por vencimiento</option>
       <option value="plan">Por plan</option>
       <option value="visitas">Por visitas</option>
     </select>
-    <!-- Botón ascendente/descendente -->
     <button id="btn-orden-dir" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--lime);font-size:16px;cursor:pointer;flex-shrink:0">↑</button>
   </div>
   <div style="padding:0 16px" id="lista-socios"></div>
   <div class="nav-ph"></div>
 </div>
 
-<!-- ═══ FORMULARIO: AGREGAR / EDITAR SOCIO ════════════════════ -->
-<div class="screen" id="screen-form">
-  <div class="hdr">
-    <div><h1 id="form-titulo">Nuevo Socio</h1></div>
-    <div class="hdr-r"><button class="btn bd bsm" id="btn-form-cancel">Cancelar</button></div>
-  </div>
-  <div class="sec" style="padding-bottom:20px">
-    <div class="f2">
-      <div class="fr"><label>Núm. Socio</label><input type="text" id="f-id" placeholder="007" inputmode="numeric"></div>
-      <div class="fr"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
-    </div>
-    <div class="f2">
-      <div class="fr"><label>Ap. Paterno</label><input type="text" id="f-ap" placeholder="Apellido P."></div>
-      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Apellido M."></div>
-    </div>
-    <div class="f2">
-      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="55 1234 5678" inputmode="numeric"></div>
-      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
-    </div>
-    <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
-    <div class="f2">
-      <div class="fr"><label>Plan</label>
-        <select id="f-plan">
-          <option value="">— Selecciona —</option>
-          <option value="Mensual">Mensual</option>
-          <option value="Trimestral">Trimestral</option>
-          <option value="Semestral">Semestral</option>
-          <option value="Anual">Anual</option>
-        </select>
-      </div>
-      <div class="fr"><label>Vencimiento</label><input type="date" id="f-vence"></div>
-    </div>
-    <div class="fr"><label>Fecha de alta</label><input type="date" id="f-inicio"></div>
-    <div class="f2">
-      <div class="fr"><label>Nacimiento</label><input type="date" id="f-nac"></div>
-      <div class="fr"><label>Sexo</label>
-        <select id="f-sexo">
-          <option value="">—</option>
-          <option value="M">Masculino</option>
-          <option value="F">Femenino</option>
-          <option value="O">Otro</option>
-        </select>
-      </div>
-    </div>
-    <div class="fr"><label>Notas</label><textarea id="f-notas" placeholder="Lesiones, observaciones…"></textarea></div>
-    <button class="btn bl bfull" id="btn-guardar-socio">Guardar</button>
-  </div>
-  <div class="nav-ph"></div>
-</div>
-
-<!-- ═══ DETALLE DE SOCIO ══════════════════════════════════════ -->
+<!-- DETALLE SOCIO — idéntico a admin, renderizado por shared.js -->
 <div class="screen" id="screen-detalle">
   <div class="hdr">
-    <div><h1 id="det-nombre">Socio</h1><small id="det-sub"></small></div>
+    <div><h1 id="det-nombre">—</h1><small id="det-sub"></small></div>
     <div class="hdr-r">
       <button class="btn bd bsm" id="btn-sync-det">↻</button>
-      <button class="btn bd bsm" id="btn-det-back">&#8592; Volver</button>
+      <button class="btn bd bsm" id="btn-det-back">← Volver</button>
     </div>
   </div>
   <div class="tabs">
@@ -268,11 +191,67 @@ textarea{resize:vertical;min-height:70px;}
   <div class="nav-ph"></div>
 </div>
 
-<!-- ═══ NAV ══════════════════════════════════════════════════ -->
+<!-- FORMULARIO SOCIO -->
+<div class="screen" id="screen-form">
+  <div class="hdr">
+    <div><h1 id="form-titulo">Nuevo Socio</h1></div>
+    <div class="hdr-r"><button class="btn bd bsm" id="btn-form-cancel">Cancelar</button></div>
+  </div>
+  <div class="sec" style="padding-bottom:20px">
+    <div class="f2">
+      <div class="fr"><label>Núm. Socio</label><input type="text" id="f-id" placeholder="007" inputmode="numeric"></div>
+      <div class="fr"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre"></div>
+    </div>
+    <div class="f2">
+      <div class="fr"><label>Ap. Paterno</label><input type="text" id="f-ap" placeholder="Ap. P."></div>
+      <div class="fr"><label>Ap. Materno</label><input type="text" id="f-am" placeholder="Ap. M."></div>
+    </div>
+    <div class="f2">
+      <div class="fr"><label>Teléfono</label><input type="tel" id="f-tel" placeholder="55 1234 5678" inputmode="numeric"></div>
+      <div class="fr"><label>Emergencia</label><input type="tel" id="f-emerg" placeholder="55 0000 0000" inputmode="numeric"></div>
+    </div>
+    <div class="fr"><label>Correo</label><input type="email" id="f-correo" placeholder="correo@mail.com"></div>
+    <div class="f2">
+      <div class="fr"><label>Plan</label><select id="f-plan"><option value="">— Selecciona —</option></select></div>
+      <div class="fr"><label>Vencimiento</label><input type="date" id="f-vence"></div>
+    </div>
+    <div class="fr"><label>Fecha de alta</label><input type="date" id="f-inicio"></div>
+    <div class="f2">
+      <div class="fr"><label>Nacimiento</label><input type="date" id="f-nac"></div>
+      <div class="fr"><label>Sexo</label>
+        <select id="f-sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option><option value="O">Otro</option></select>
+      </div>
+    </div>
+    <div class="fr"><label>Notas</label><textarea id="f-notas" placeholder="Lesiones, observaciones…"></textarea></div>
+    <button class="btn bl bfull" id="btn-guardar-soc">Guardar</button>
+  </div>
+  <div class="nav-ph"></div>
+</div>
+
+<!-- VENTAS -->
+<div class="screen" id="screen-ventas">
+  <div class="hdr">
+    <div><h1>Mis Ventas</h1></div>
+    <div class="hdr-r"><button class="btn bd bsm" id="btn-sync-ventas">↻</button></div>
+  </div>
+  <div class="sec" style="padding-bottom:20px">
+    <div id="ventas-resumen" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="date" id="v-desde" style="flex:1;font-size:12px;padding:8px 10px">
+      <span style="color:var(--muted);font-size:12px">—</span>
+      <input type="date" id="v-hasta" style="flex:1;font-size:12px;padding:8px 10px">
+    </div>
+    <div class="lbl-sec">Historial</div>
+    <div id="ventas-lista"></div>
+  </div>
+  <div class="nav-ph"></div>
+</div>
+
+<!-- NAV -->
 <nav class="nav-bar" id="nav-trainer" style="display:none">
-  <button class="nav-item active" data-screen="inicio"><span class="nav-icon">&#9989;</span>Inicio</button>
-  <button class="nav-item" data-screen="socios"><span class="nav-icon">&#128101;</span>Socios</button>
-  <button class="nav-item" data-screen="ventas"><span class="nav-icon">&#128176;</span>Ventas</button>
+  <button class="nav-item active" data-screen="inicio"><span class="nav-icon">✓</span>Inicio</button>
+  <button class="nav-item" data-screen="socios"><span class="nav-icon">👥</span>Socios</button>
+  <button class="nav-item" data-screen="ventas"><span class="nav-icon">💰</span>Ventas</button>
 </nav>
 
 <!-- MODAL: CHECK-IN -->
@@ -280,34 +259,38 @@ textarea{resize:vertical;min-height:70px;}
   <div class="modal">
     <div class="mhandle"></div>
     <h2>Check-in</h2>
-
-    <!-- Tabs: código o escáner -->
-    <div style="display:flex;gap:6px;margin-bottom:16px">
-      <button class="btn" id="ci-tab-codigo" style="flex:1;justify-content:center;background:var(--lime);color:#080808">&#35; Código</button>
-      <button class="btn bd" id="ci-tab-scanner" style="flex:1;justify-content:center">&#128247; Escáner</button>
+    <div class="fr"><label>Código o número de socio</label>
+      <input type="text" id="ci-input" placeholder="001 o GM-001-..." autocomplete="off">
     </div>
-
-    <!-- Panel: código manual -->
-    <div id="ci-panel-codigo">
-      <div class="fr">
-        <label>Número de socio o código QR</label>
-        <input type="text" id="ci-input" placeholder="Número de socio (ej: 007)" inputmode="text" autocomplete="off">
-      </div>
-      <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px" id="ci-error"></div>
-      <div style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);min-height:48px;margin-bottom:12px" id="ci-preview">
-        <span style="font-size:12px;color:var(--muted)">Ingresa el código para ver el socio…</span>
-      </div>
-      <button class="btn bl bfull" id="ci-confirmar">Registrar Check-in</button>
+    <div id="ci-preview" style="background:var(--bg3);border-radius:10px;padding:10px 12px;min-height:48px;margin-bottom:8px;border:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--muted)">Ingresa el código…</span>
     </div>
-
-    <!-- Panel: escáner (placeholder — p10 se conectará aquí) -->
-    <div id="ci-panel-scanner" style="display:none;text-align:center;padding:20px 0">
-      <div style="font-size:48px;margin-bottom:12px">&#128247;</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:8px">Escáner QR</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.6">Esta función usa la página de escáner.<br>Por ahora usa el código manual.</div>
+    <div id="ci-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+    <div class="mbtns">
+      <button class="btn bd" style="flex:1;padding:13px" data-close="modal-checkin">Cancelar</button>
+      <button class="btn bl" style="flex:1;padding:13px" id="ci-confirmar">✓ Confirmar</button>
     </div>
+  </div>
+</div>
 
-    <button class="btn bd bfull" style="margin-top:8px" data-close="modal-checkin">Cancelar</button>
+<!-- MODAL: RENOVAR MEMBRESÍA -->
+<div class="modal-ov" id="modal-pago">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <h2 id="pago-titulo">Renovar membresía</h2>
+    <div class="fr"><label>Plan</label><select id="pago-plan"><option value="">— Selecciona —</option></select></div>
+    <div class="fr"><label>Fecha de pago</label><input type="date" id="pago-inicio"></div>
+    <div class="fr"><label>Tipo de pago</label>
+      <select id="pago-tipo">
+        <option value="completo">Pago único</option>
+        <option value="parcial">Parcialidades</option>
+      </select>
+    </div>
+    <div style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.8;margin-top:4px" id="pago-resumen"></div>
+    <div class="mbtns">
+      <button class="btn bd" style="flex:1;padding:13px" data-close="modal-pago">Cancelar</button>
+      <button class="btn bl" style="flex:1;padding:13px" id="pago-guardar">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -317,996 +300,291 @@ textarea{resize:vertical;min-height:70px;}
     <div class="mhandle"></div>
     <h2>WhatsApp</h2>
     <div id="wa-para" style="font-size:13px;font-weight:600;color:var(--lime);margin-bottom:14px"></div>
-    <div class="fr"><label>Tipo de mensaje</label>
-      <select id="wa-tipo">
-        <option value="">— Selecciona —</option>
-        <option value="1">Recordatorio de pago</option>
-        <option value="2">Membresía vencida</option>
-        <option value="3">Abono pendiente</option>
-        <option value="4">Deuda de producto</option>
-        <option value="5">Bienvenida</option>
-      </select>
-    </div>
+    <div class="fr"><label>Mensaje</label><select id="wa-tipo"><option value="">— Selecciona —</option></select></div>
     <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);min-height:48px;line-height:1.6;border:1px solid var(--border)" id="wa-preview">Selecciona un tipo…</div>
     <div class="mbtns">
       <button class="btn bd" style="flex:1;padding:13px" data-close="modal-wa">Cancelar</button>
-      <button class="btn bwa" style="flex:1;padding:13px" id="wa-enviar">&#128241; Enviar</button>
+      <button class="btn bwa" style="flex:1;padding:13px" id="wa-enviar">📱 Enviar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: REGISTRAR PAGO / RENOVAR -->
-<div class="modal-ov" id="modal-pago">
-  <div class="modal">
-    <div class="mhandle"></div>
-    <h2 id="pago-titulo">Registrar Pago</h2>
-    <div class="fr"><label>Plan</label>
-      <select id="pago-plan">
-        <option value="Mensual">Mensual · $1,200</option>
-        <option value="Trimestral">Trimestral · $3,200</option>
-        <option value="Semestral">Semestral · $5,800</option>
-        <option value="Anual">Anual · $11,000</option>
-      </select>
-    </div>
-    <div class="fr"><label>Fecha de inicio</label><input type="date" id="pago-fecha-inicio"></div>
-    <div class="fr"><label>Tipo de pago</label>
-      <select id="pago-tipo">
-        <option value="completo">Pago único (completo)</option>
-        <option value="parcial">Parcialidades</option>
-      </select>
-    </div>
-    <div id="pago-resumen" style="background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border);margin-top:4px;font-size:12px;color:var(--muted);line-height:1.8"></div>
-    <div class="mbtns">
-      <button class="btn bd" style="flex:1;padding:13px" data-close="modal-pago">Cancelar</button>
-      <button class="btn bl" style="flex:1;padding:13px" id="pago-guardar">Confirmar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: PIN ADMIN (eliminar deuda) -->
-<div class="modal-ov" id="modal-pin">
-  <div class="modal" style="text-align:center">
-    <div class="mhandle"></div>
-    <div style="font-size:32px;margin-bottom:8px">&#128272;</div>
-    <h2 style="margin-bottom:4px">Autorización Admin</h2>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Ingresa el PIN de administrador</div>
-    <div class="pin-dots" style="justify-content:center">
-      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
-    </div>
-    <div style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:12px" id="pin-err"></div>
-    <div class="pin-pad">
-      <button class="pin-key" data-n="1">1</button><button class="pin-key" data-n="2">2</button><button class="pin-key" data-n="3">3</button>
-      <button class="pin-key" data-n="4">4</button><button class="pin-key" data-n="5">5</button><button class="pin-key" data-n="6">6</button>
-      <button class="pin-key" data-n="7">7</button><button class="pin-key" data-n="8">8</button><button class="pin-key" data-n="9">9</button>
-      <button class="pin-key sm" id="pin-cancel">Cancelar</button><button class="pin-key" data-n="0">0</button><button class="pin-key sm" id="pin-del">&#9003;</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ DATA (GymDB) ═══════════════════════════════════════ -->
-<script>
-var _gymdbReady = GymDB.init(); // Promise
-
-var TRAINERS    = [];
-var PIN_ADMIN   = "1234";
-var PLAN_PRECIO = {Mensual:1200,Trimestral:3200,Semestral:5800,Anual:11000};
-var PLAN_DIAS   = {Mensual:30,Trimestral:90,Semestral:180,Anual:365};
-var PLAN_ABONOS = {
-  Mensual:    [{monto:600,  semanas:1},{monto:600,  semanas:2}],
-  Trimestral: [{monto:1600, semanas:2},{monto:1600, semanas:4}],
-  Semestral:  [{monto:1450, semanas:2},{monto:1450, semanas:4},{monto:1450, semanas:6},{monto:450, semanas:8}],
-  Anual:      []
-};
-
-var SOCIOS=[], DEUDAS={}, CHECKINS=[], MENSAJES=[], PRODUCTOS=[];
-
-// Construir MSGS_WA desde MENSAJES
-function buildMsgsWA(){
-  var obj={};
-  MENSAJES.forEach(function(m,i){ obj[String(i+1)]=m.cuerpo; });
-  return obj;
-}
-var MSGS_WA = buildMsgsWA();
-
-
-// ── Llenar selects de plan desde el catálogo ─────────────────
-function poblarSelectPlanes(){
-  if(!MEMBRESIAS||!MEMBRESIAS.length) return;
-  // Reconstruir PLAN_DIAS y PLAN_PRECIO desde el catálogo
-  MEMBRESIAS.forEach(function(m){
-    if(!m.nombre) return;
-    PLAN_DIAS[m.nombre]   = m.dias   || 30;
-    PLAN_PRECIO[m.nombre] = m.precio || 0;
-    if(m.abonos&&m.abonos.length) PLAN_ABONOS[m.nombre]=m.abonos;
-  });
-  // Llenar cada select de plan en la página
-  var ids = ["f-plan","pago-plan"];
-  ids.forEach(function(sid){
-    var sel=ge(sid); if(!sel) return;
-    var actual=sel.value;
-    sel.innerHTML="<option value=''>— Selecciona —</option>";
-    MEMBRESIAS.forEach(function(m){
-      if(!m.nombre) return;
-      var opt=document.createElement("option");
-      opt.value=m.nombre;
-      opt.textContent=m.nombre+" · $"+((m.precio||0).toLocaleString("es-MX"));
-      sel.appendChild(opt);
-    });
-    if(actual) sel.value=actual;
-  });
-}
-function recargarDatos(){
-  TRAINERS   = GymDB.getTrainers();
-  SOCIOS     = GymDB.getSocios();
-  DEUDAS     = GymDB.getAllDeudas();
-  CHECKINS   = GymDB.getTodayCheckins();
-  MENSAJES   = GymDB.getMensajes();
-  PRODUCTOS  = GymDB.getProductos();
-  MEMBRESIAS = GymDB.getMembresias();
-  poblarSelectPlanes();
-  CLASES     = GymDB.getClases();
-  MSGS_WA    = buildMsgsWA();
-}
-
-function mostrarToast(msg){
-  var t=document.getElementById('toast-sync');
-  if(!t){
-    t=document.createElement('div');
-    t.id='toast-sync';
-    t.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#C8F135;border:1px solid rgba(200,241,53,.4);border-radius:10px;padding:8px 16px;font-size:12px;font-weight:700;font-family:"DM Sans",sans-serif;z-index:9999;transition:opacity .3s';
-    document.body.appendChild(t);
-  }
-  t.textContent=msg; t.style.opacity='1';
-  clearTimeout(t._tid);
-  t._tid=setTimeout(function(){t.style.opacity='0';},2000);
-}
-</script>
-
-<!-- ═══ LÓGICA ════════════════════════════════════════════════ -->
-<script>
-function ge(id){return document.getElementById(id);}
-function fm(n){return "$"+Number(n).toLocaleString("es-MX");}
-function ini(s){return (s.nombre[0]+s.apellido_paterno[0]).toUpperCase();}
-function fFecha(f){return f?new Date(f+"T00:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"2-digit"}):"—";}
-function addDays(f,d){var dt=new Date(f+"T00:00:00");dt.setDate(dt.getDate()+d);return dt.toISOString().slice(0,10);}
-function addWeeks(f,w){return addDays(f,w*7);}
-
-function calcStatus(s){
-  if(!s.activo)return"inactivo";
-  var hoy=new Date();hoy.setHours(0,0,0,0);
-  var v=new Date(s.fecha_vencimiento);v.setHours(0,0,0,0);
-  var d=Math.ceil((v-hoy)/86400000);
-  if(d<0)return"vencido";if(d===0)return"vencehoy";return"aldia";
-}
-function avColor(st){return st==="aldia"?"#C8F135":st==="vencehoy"?"var(--orange)":"var(--red)";}
-function pillSt(st){
-  var m={aldia:"pg",vencehoy:"po",vencido:"pr",inactivo:"pm"};
-  var l={aldia:"Al día",vencehoy:"Vence hoy",vencido:"Vencido",inactivo:"Inactivo"};
-  return "<span class='pill "+(m[st]||"pm")+"'>"+(l[st]||st)+"</span>";
-}
-function nombreCompleto(s){return s.nombre+" "+s.apellido_paterno+" "+s.apellido_materno;}
-
-// ── ESTADO ────────────────────────────────────────────────────
-var sortActual  = "id";
-var ordenAsc    = true;
-var detTab      = "membresia";
-var socioActual = null;
-var waTarget    = null;
-var pinCallback = null;
-var pinBuf      = "";
-
-// ── NAVEGACIÓN ────────────────────────────────────────────────
-function showScreen(id){
-  document.querySelectorAll(".screen,.screen-full").forEach(function(s){s.classList.remove("active");});
-  ge("screen-"+id).classList.add("active");
-  document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){
-    b.classList.toggle("active",b.dataset.screen===id);
-  });
-  if(id==="inicio")  renderInicio();
-  if(id==="socios")  renderSocios();
-  if(id==="ventas")  renderVentas();
-  if(id==="detalle") { recargarDatos(); setTimeout(renderDetalle,0); }
-}
-
-// ── LOGIN ─────────────────────────────────────────────────────
-function intentarLogin(){
-  var tel =ge("login-tel").value.replace(/\D/g,"").trim();
-  var code=ge("login-code").value.trim().toUpperCase();
-  var ok  =TRAINERS.find(function(t){return t.telefono===tel&&t.codigo.toUpperCase()===code;});
-  if(!ok){ge("login-err").textContent="Número o código incorrecto";return;}
-  TRAINER_ACTIVO = ok;
-  ge("login-err").textContent="";
-  ge("screen-login").classList.remove("active");
-  ge("nav-trainer").style.display="flex";
-  var str=new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
-  ge("hdr-fecha").textContent=str.charAt(0).toUpperCase()+str.slice(1);
-  if(ge("hdr-trainer-nombre")) ge("hdr-trainer-nombre").textContent=ok.nombre;
-  showScreen("inicio");
-}
-
-// ── INICIO: CHECK-INS ─────────────────────────────────────────
-function renderInicio(){
-  ge("ci-count").textContent=CHECKINS.length;
-  var html="";
-  if(!CHECKINS.length){html="<div class='empty'><div class='ico'>&#128170;</div><p>Sin check-ins hoy</p></div>";}
-  else CHECKINS.forEach(function(ci){
-    var s=SOCIOS.find(function(x){return x.id===ci.socio_id;});
-    if(!s)return;
-    var st    = calcStatus(s);
-    var deudas= DEUDAS[s.id]||[];
-    var totalD= deudas.reduce(function(a,d){return a+d.total;},0);
-    var abonoP= (s.abonos||[]).find(function(a){
-      var lim=new Date(a.fecha_limite+"T00:00:00"); var hoy=new Date(); hoy.setHours(0,0,0,0);
-      return !a.pagado && lim<hoy;
-    });
-    html+="<div class='ci-row' data-ver-ci='"+s.id+"' style='cursor:pointer'>";
-    html+="<div class='ci-av'>"+ini(s)+"</div>";
-    html+="<div class='ci-info'><div class='ci-nombre'>#"+s.id+" · "+s.nombre+" "+s.apellido_paterno+"</div>";
-    html+="<div class='ci-sub'>"+ci.hora+" · "+s.plan+"</div>";
-    html+="<div style='margin-top:4px;display:flex;gap:5px;flex-wrap:wrap'>"+pillSt(st);
-    if(totalD>0) html+="<span class='pill po'>Debe: "+fm(totalD)+"</span>";
-    if(abonoP)   html+="<span class='pill pr'>Abono vencido</span>";
-    html+="</div></div>";
-    html+="<span style='color:var(--muted);font-size:18px'>›</span>";
-    html+="</div>";
-  });
-  ge("lista-ci").innerHTML=html;
-  ge("lista-ci").querySelectorAll("[data-ver-ci]").forEach(function(row){
-    row.addEventListener("click",function(){
-      socioActual=SOCIOS.find(function(s){return s.id===this.dataset.verCi;},this);
-      detTab="membresia";
-      document.querySelectorAll(".tab[data-det]").forEach(function(b){b.classList.toggle("active",b.dataset.det==="membresia");});
-      showScreen("detalle");
-    });
-  });
-}
-
-// ── SOCIOS: LISTA ─────────────────────────────────────────────
-function renderVentas(){
-  var t = TRAINER_ACTIVO||{id:"trainer",nombre:"Trainer"};
-  ge("ventas-lista").innerHTML = "<div style='font-size:12px;color:var(--muted)'>Cargando…</div>";
-  GymDB.getCobros(String(t.id)).then(function(cobros){
-    cobros = cobros||[];
-    var totalMes=0, totalHoy=0;
-    var hoy=new Date().toISOString().slice(0,10);
-    var mes=new Date().toISOString().slice(0,7);
-    cobros.forEach(function(c){
-      if(c.fecha&&c.fecha.slice(0,10)===hoy) totalHoy+=+c.monto;
-      if(c.fecha&&c.fecha.slice(0,7)===mes)  totalMes+=+c.monto;
-    });
-    // Resumen
-    ge("ventas-resumen").innerHTML=
-      "<div class='f2' style='gap:8px'>"+
-      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>HOY</div>"+
-      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalHoy)+"</div></div>"+
-      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>ESTE MES</div>"+
-      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalMes)+"</div></div></div>";
-    // Lista
-    if(!cobros.length){
-      ge("ventas-lista").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin ventas registradas aún</div>";
-      return;
-    }
-    var html="";
-    cobros.slice(0,50).forEach(function(c){
-      var tipo=c.tipo==="membresia"?"💳":c.tipo==="deuda"?"📦":"🛒";
-      html+="<div class='card' style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>";
-      html+="<div style='font-size:20px'>"+tipo+"</div>";
-      html+="<div style='flex:1'><div style='font-size:13px;font-weight:600'>"+c.producto+"</div>";
-      html+="<div style='font-size:11px;color:var(--muted)'>"+(c.socio_nombre||"")+" · "+(c.fecha||"")+"</div></div>";
-      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:20px;color:var(--lime)'>"+fm(+c.monto)+"</div></div>";
-    });
-    ge("ventas-lista").innerHTML=html;
-  });
-}
-
-// showScreen is defined earlier above and handles all screens
-// (this duplicate was removed — do not add another showScreen here)
-
-function confirmarCobro(){
-  if(!_cobroPendiente) return;
-  var codigo = ge("cobrar-codigo").value.trim();
-  if(!codigo){ ge("cobrar-error").textContent="Ingresa tu código"; return; }
-  var t = TRAINER_ACTIVO;
-  if(!t){ ge("cobrar-error").textContent="Sesión no iniciada"; return; }
-  if(codigo.toUpperCase() !== (t.codigo||"").toUpperCase()){
-    ge("cobrar-error").textContent="Código incorrecto (usa el mismo con el que entraste)";
-    return;
-  }
-  DEUDAS[_cobroPendiente.socioId]=(DEUDAS[_cobroPendiente.socioId]||[]).filter(function(d){
-    return String(d.id)!==String(_cobroPendiente.deudaId);
-  });
-  GymDB.saveAllDeudas(DEUDAS);
-  GymDB.registrarCobro({
-    tipo:"deuda", socio_id:_cobroPendiente.socioId, socio_nombre:_cobroPendiente.socioNombre,
-    producto:_cobroPendiente.producto, monto:_cobroPendiente.monto,
-    vendedor_id:String(t.id), vendedor_nombre:t.nombre
-  });
-  ge("modal-cobrar-deuda").classList.remove("open");
-  _cobroPendiente=null;
-  mostrarToast("✓ Cobro registrado");
-  renderDetalle();
-}
-
-function renderSocios(){
-  var q   =ge("soc-buscar").value.toLowerCase().trim();
-  var list=SOCIOS.slice();
-  if(q) list=list.filter(function(s){
-    return nombreCompleto(s).toLowerCase().indexOf(q)>-1||s.id.indexOf(q)>-1||s.plan.toLowerCase().indexOf(q)>-1;
-  });
-  list.sort(function(a,b){
-    var r=0;
-    if(sortActual==="nombre")     r=nombreCompleto(a).localeCompare(nombreCompleto(b));
-    else if(sortActual==="vencimiento")r=new Date(a.fecha_vencimiento)-new Date(b.fecha_vencimiento);
-    else if(sortActual==="plan")       r=a.plan.localeCompare(b.plan);
-    else if(sortActual==="visitas")    r=(a.visitas||0)-(b.visitas||0);
-    else                               r=a.id.localeCompare(b.id);
-    return ordenAsc ? r : -r;
-  });
-  var c=ge("lista-socios");
-  if(!list.length){c.innerHTML="<div class='empty'><div class='ico'>&#128101;</div><p>Sin resultados</p></div>";return;}
-  var html="";
-  list.forEach(function(s){
-    var st    =calcStatus(s);
-    var deudas=DEUDAS[s.id]||[];
-    var totalD=deudas.reduce(function(a,d){return a+d.total;},0);
-    var abonoP=(s.abonos||[]).find(function(a){return !a.pagado;});
-    html+="<div class='soc-card "+st+"'><div class='soc-fila'>";
-    html+="<div class='soc-av' style='background:"+avColor(st)+"'>"+ini(s)+"</div>";
-    html+="<div class='soc-info'><div class='soc-nombre'>#"+s.id+" · "+s.nombre+" "+s.apellido_paterno+"</div>";
-    html+="<div class='soc-sub'>"+s.plan+" · Vence: "+fFecha(s.fecha_vencimiento)+"</div>";
-    html+="<div style='margin-top:5px;display:flex;gap:5px;flex-wrap:wrap'>"+pillSt(st);
-    if(totalD>0)html+="<span class='pill po'>Debe: "+fm(totalD)+"</span>";
-    if(abonoP)  html+="<span class='pill po'>Abono pend.</span>";
-    html+="</div></div>";
-    html+="<button class='btn bwa bsm' data-wa='"+s.id+"'>&#128241;</button>";
-    html+="</div>";
-    html+="<div style='margin-top:10px'><button class='btn bl bsm' data-ver='"+s.id+"' style='width:100%;justify-content:center'>Ver detalle</button></div>";
-    html+="</div>";
-  });
-  c.innerHTML=html;
-  c.querySelectorAll("[data-ver]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      socioActual=SOCIOS.find(function(s){return s.id===this.dataset.ver;},this);
-      detTab="membresia";
-      document.querySelectorAll(".tab[data-det]").forEach(function(b){b.classList.toggle("active",b.dataset.det==="membresia");});
-      showScreen("detalle");
-    });
-  });
-  c.querySelectorAll("[data-wa]").forEach(function(btn){
-    btn.addEventListener("click",function(){abrirWA(this.dataset.wa);});
-  });
-}
-
-// ── CHECK-IN ──────────────────────────────────────────────────
-// Busca socio por número de id O por código QR (GM-001-XXXXX)
-function buscarPorCodigo(val){
-  val = val.trim();
-  if(!val) return null;
-  // Formato QR GM-007-XXXXX
-  var match = val.match(/^GM-(\d+)-/i);
-  var buscarId = match ? match[1] : val;
-  // Buscar por id exacto O por número sin ceros iniciales
-  return SOCIOS.find(function(s){
-    return s.id === buscarId ||
-           s.id === String(parseInt(buscarId,10)) ||
-           parseInt(s.id,10) === parseInt(buscarId,10);
-  });
-}
-
-function abrirCheckin(){
-  ge("ci-input").value="";
-  ge("ci-error").textContent="";
-  ge("ci-preview").innerHTML="<span style='font-size:12px;color:var(--muted)'>Ingresa el código para ver el socio…</span>";
-  ge("modal-checkin").classList.add("open");
-  setTimeout(function(){ ge("ci-input").focus(); }, 300);
-}
-
-function previewCheckin(){
-  var s = buscarPorCodigo(ge("ci-input").value);
-  if(!s){
-    ge("ci-preview").innerHTML="<span style='font-size:12px;color:var(--muted)'>Socio no encontrado</span>";
-    return;
-  }
-  var st = calcStatus(s);
-  var deudas = DEUDAS[s.id]||[];
-  var totalD = deudas.reduce(function(a,d){return a+d.total;},0);
-  var html = "<div style='display:flex;align-items:center;gap:10px'>";
-  html += "<div style='width:36px;height:36px;border-radius:50%;background:"+avColor(st)+";display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#080808'>"+ini(s)+"</div>";
-  html += "<div><div style='font-weight:700;font-size:14px'>#"+s.id+" · "+s.nombre+" "+s.apellido_paterno+"</div>";
-  html += "<div style='font-size:12px;color:var(--muted);margin-top:2px'>"+s.plan+" · "+pillSt(st);
-  if(totalD>0) html += " <span class='pill po'>Debe: "+fm(totalD)+"</span>";
-  html += "</div></div></div>";
-  ge("ci-preview").innerHTML = html;
-}
-
-function confirmarCheckin(){
-  var s = buscarPorCodigo(ge("ci-input").value);
-  if(!s){ ge("ci-error").textContent="Socio no encontrado"; return; }
-  // Verificar que no haya entrado ya hoy
-  var yaEntro = CHECKINS.find(function(c){ return c.socio_id===s.id; });
-  if(yaEntro){ ge("ci-error").textContent=s.nombre+" ya tiene check-in hoy"; return; }
-  // Registrar en GymDB (también incrementa visitas)
-  GymDB.addCheckin(s.id);
-  CHECKINS = GymDB.getTodayCheckins();
-  SOCIOS   = GymDB.getSocios();
-  ge("modal-checkin").classList.remove("open");
-  ge("ci-input").value="";
-  ge("ci-preview").innerHTML="";
-  ge("ci-error").textContent="";
-  mostrarToast("✓ Check-in registrado: "+s.nombre);
-  renderInicio();
-}
-function guardarSocio(){
-  var id=ge("f-id").value.trim(), nombre=ge("f-nombre").value.trim(), ap=ge("f-ap").value.trim();
-  if(!id||!nombre||!ap){alert("Número, nombre y apellido son requeridos");return;}
-  var datos={
-    id:id, nombre:nombre, apellido_paterno:ap, apellido_materno:ge("f-am").value.trim(),
-    numero:ge("f-tel").value.trim(), numero_emergencia:ge("f-emerg").value.trim(),
-    correo:ge("f-correo").value.trim(), notas:ge("f-notas").value.trim(),
-    fecha_vencimiento:ge("f-vence").value, fecha_inicio:ge("f-inicio").value,
-    fecha_nacimiento:ge("f-nac").value, plan:ge("f-plan").value,
-    sexo:ge("f-sexo").value, visitas:0, activo:true, abonos:[]
-  };
-  var idx=SOCIOS.findIndex(function(x){return x.id===id;});
-  if(idx>-1){
-    datos.visitas=SOCIOS[idx].visitas; datos.activo=SOCIOS[idx].activo; datos.abonos=SOCIOS[idx].abonos||[];
-    SOCIOS[idx]=datos;
-  } else {
-    SOCIOS.push(datos);
-  }
-  GymDB.saveSocios(SOCIOS);
-  showScreen("socios");
-}
-
-// ── DETALLE SOCIO ─────────────────────────────────────────────
-function renderDetalle(){
-  if(!socioActual){showScreen("socios");return;}
-  var s=socioActual;
-  ge("det-nombre").textContent=s.nombre+" "+s.apellido_paterno;
-  ge("det-sub").textContent="#"+s.id+" · "+s.plan;
-  if(detTab==="membresia")   renderMembresia(s);
-  else if(detTab==="deudas") renderTabDeudas(s);
-  else if(detTab==="info")   renderInfoGeneral(s);
-  else if(detTab==="seguimiento") renderTabSeguimiento(s);
-}
-
-// ── TAB: MEMBRESÍA Y DEUDAS ───────────────────────────────────
-function renderMembresia(s){
-  var st    =calcStatus(s);
-  var abonos=s.abonos||[];
-  var deudas=DEUDAS[s.id]||[];
-  var totalD=deudas.reduce(function(a,d){return a+d.total;},0);
-  var hoy   =new Date();hoy.setHours(0,0,0,0);
-
-  var html="<div class='sec' style='padding-bottom:16px'>";
-
-  // ── Status membresía
-  html+="<div style='margin-bottom:8px;margin-top:4px'><div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px'>Membresía</div>";
-  html+="<div class='card "+(st==="aldia"?"verde":st==="vencehoy"?"naranja":"roja")+"'>";
-  html+="<div style='display:flex;justify-content:space-between;align-items:center'>";
-  html+="  <div><div style='font-family:\"Bebas Neue\",sans-serif;font-size:22px'>"+s.plan+"</div>";
-  html+="  <div style='font-size:12px;color:var(--muted);margin-top:2px'>Vence: "+fFecha(s.fecha_vencimiento)+"</div></div>";
-  html+=pillSt(st)+"</div>";
-
-  // Barra de abonos
-  if(abonos.length){
-    var pagados=abonos.filter(function(a){return a.pagado;}).length;
-    var pct=Math.round((pagados/abonos.length)*100);
-    html+="<div class='prog-wrap' style='margin-top:10px'><div class='prog-fill' style='width:"+pct+"%'></div></div>";
-    html+="<div style='font-size:11px;color:var(--muted);margin-top:4px'>"+pagados+"/"+abonos.length+" abonos · "+fm(abonos.filter(function(a){return a.pagado;}).reduce(function(t,a){return t+a.monto;},0))+" pagado</div>";
-  }
-  html+="</div>";
-
-  // Lista de abonos
-  if(abonos.length){
-    html+="<div class='card' style='margin-bottom:8px'>";
-    abonos.forEach(function(a){
-      var lim=new Date(a.fecha_limite+"T00:00:00");
-      var vencido=!a.pagado&&lim<hoy;
-      var cls=a.pagado?"ok":vencido?"venc":"pend";
-      var ico=a.pagado?"✓":a.num;
-      html+="<div class='abono-row'>";
-      html+="<div class='abono-num "+cls+"'>"+ico+"</div>";
-      html+="<div style='flex:1;min-width:0'>";
-      html+="  <div style='font-size:13px;font-weight:600'>Abono "+a.num+(a.pagado?" · Pagado":(vencido?" · Vencido":" · Pendiente"))+"</div>";
-      html+="  <div style='font-size:11px;color:var(--muted)'>"+(a.pagado?"Pagado el "+fFecha(a.fecha_pago):"Límite: "+fFecha(a.fecha_limite))+"</div>";
-      html+="</div>";
-      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:"+(a.pagado?"var(--green)":vencido?"var(--red)":"var(--orange)")+"'>"+fm(a.monto)+"</div>";
-      html+="</div>";
-    });
-    html+="</div>";
-  }
-
-  // Botones membresía
-  html+="<div style='display:flex;gap:8px;margin-bottom:12px'>";
-  html+="<button class='btn bl bsm' style='flex:1;justify-content:center' id='btn-renovar'>&#43; Renovar membresía</button>";
-  html+="</div></div>";
-
-  // ── Deudas de productos
-  html+="<div class='sec'><div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px'>Deudas de productos</div>";
-  if(!deudas.length){
-    html+="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin deudas ✓</div>";
-  } else {
-    deudas.forEach(function(d){
-      html+="<div class='card' style='display:flex;align-items:center;gap:10px;border:1px solid rgba(255,59,48,.25)'>";
-      html+="<div style='flex:1'><div style='font-weight:600;font-size:13px'>"+d.producto+"</div>";
-      html+="<div style='font-size:11px;color:var(--muted)'>"+fFecha(d.fecha)+"</div></div>";
-      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:18px;color:var(--red)'>"+fm(d.total)+"</div>";
-      html+="<span style='font-size:11px;font-weight:700;color:var(--red);background:rgba(255,59,48,.12);padding:3px 8px;border-radius:6px'>Debe</span>";
-      html+="<button class='btn bsm' style='background:rgba(255,59,48,.12);color:var(--red);border:1px solid rgba(255,59,48,.3);font-size:16px;padding:6px 10px' data-cobrar-deuda='"+d.id+"' data-prod='"+d.producto+"' data-monto='"+d.total+"'>🗑</button>";
-      html+="</div>";
-    });
-    html+="<div style='text-align:right;font-size:12px;color:var(--red);margin-top:4px'>Total debe: "+fm(totalD)+"</div>";
-  }
-
-  // Agregar producto
-  html+="<div style='margin-top:12px'>";
-  html+="<button class='btn bd bsm' style='width:100%;justify-content:center' id='btn-add-prod'>+ Agregar producto</button>";
-  html+="<div id='panel-add-prod' style='display:none;margin-top:10px;background:var(--bg3);border-radius:12px;padding:12px;border:1px solid var(--border)'>";
-  var prodOpts="<option value=''>Selecciona producto del catálogo</option>";
-  PRODUCTOS.forEach(function(p){ prodOpts+="<option value='"+p.id+"'>"+p.nombre+" - $"+p.costo+"</option>"; });
-  html+="  <div class='fr'><label>Producto</label><select id='prod-select'>"+prodOpts+"</select></div>";
-  html+="  <div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>";
-  html+="    <div class='fr'><label>Monto ($)</label><input type='number' id='prod-monto' readonly></div>";
-  html+="    <div class='fr'><label>Estado</label><select id='prod-status'><option value='debe'>Debe</option><option value='pagado'>Pagado</option></select></div>";
-  html+="  </div>";
-  html+="  <button class='btn bl' style='width:100%;justify-content:center;padding:11px' id='btn-guardar-prod'>Guardar producto</button>";
-  html+="</div>";
-  html+="</div>";
-  html+="</div>";
-
-  ge("det-content").innerHTML=html;
-
-  // Eventos
-  var br=ge("btn-renovar");
-  if(br) br.addEventListener("click",function(){abrirModalPago(s,"Renovar membresía");});
-
-  var bap=ge("btn-add-prod");
-  if(bap) bap.addEventListener("click",function(){
-    var panel=ge("panel-add-prod");
-    if(panel) panel.style.display=panel.style.display==="none"?"block":"none";
-  });
-
-  // Auto-llenar monto cuando selecciona producto
-  var sel=ge("prod-select");
-  if(sel) sel.addEventListener("change",function(){
-    var prodId=+this.value;
-    if(prodId){
-      var p=PRODUCTOS.find(function(x){return x.id===prodId;});
-      if(p) ge("prod-monto").value=p.costo;
-    } else {
-      ge("prod-monto").value="";
-    }
-  });
-
-  var bgp=ge("btn-guardar-prod");
-  if(bgp) bgp.addEventListener("click",function(){
-    var prodId=+ge("prod-select").value;
-    var status=ge("prod-status").value;
-    if(!prodId){alert("Selecciona un producto");return;}
-    var p=PRODUCTOS.find(function(x){return x.id===prodId;});
-    if(!p) return;
-    if(!DEUDAS[s.id]) DEUDAS[s.id]=[];
-    var nuevo={id:"d"+Date.now(),producto:p.nombre,total:p.costo,fecha:new Date().toISOString().slice(0,10),status:status};
-    if(status==="debe"){ DEUDAS[s.id].push(nuevo); GymDB.saveAllDeudas(DEUDAS); }
-    ge("panel-add-prod").style.display="none";
-    ge("prod-select").value=""; ge("prod-monto").value="";
-    renderDetalle();
-  });
-
-  ge("det-content").querySelectorAll("[data-cobrar-deuda]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      _cobroPendiente={socioId:s.id,socioNombre:s.nombre+" "+s.apellido_paterno,
-        deudaId:this.dataset.cobrarDeuda,producto:this.dataset.prod,monto:+this.dataset.monto};
-      ge("cobrar-info").textContent="Cobrar "+_cobroPendiente.producto+" · "+fm(_cobroPendiente.monto)+" de "+_cobroPendiente.socioNombre;
-      ge("cobrar-codigo").value=""; ge("cobrar-error").textContent="";
-      ge("modal-cobrar-deuda").classList.add("open");
-    });
-  });
-}
-
-// ── TAB: INFORMACIÓN GENERAL ──────────────────────────────────
-
-function renderTabSeguimiento(s){
-  var html="<div class='sec' style='padding-bottom:20px'>";
-  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Nuevo registro</div>";
-  html+="<div class='card' style='margin-bottom:14px'>";
-  html+="<div class='f2'>";
-  html+="<div class='fr'><label>Peso (kg)</label><input type='number' id='seg-peso' placeholder='75.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
-  html+="<div class='fr'><label>IMC</label><input type='number' id='seg-imc' placeholder='22.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
-  html+="</div><div class='f2' style='margin-top:8px'>";
-  html+="<div class='fr'><label>Músculo (kg)</label><input type='number' id='seg-musculo' placeholder='32.0' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
-  html+="<div class='fr'><label>% Grasa</label><input type='number' id='seg-grasa' placeholder='18.5' step='0.1' inputmode='decimal' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
-  html+="</div><div class='fr' style='margin-top:8px'><label>Fecha de medición</label><input type='date' id='seg-fecha' style='background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:14px;font-family:DM Sans,sans-serif;outline:none;width:100%'></div>";
-  html+="<button class='btn bl bfull' style='margin-top:12px' id='btn-guardar-seg'>Guardar medidas</button>";
-  html+="</div>";
-  html+="<div style='font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px'>Historial (últimos 12)</div>";
-  html+="<div id='seg-historial'><div style='font-size:13px;color:var(--muted)'>Cargando…</div></div>";
-  html+="</div>";
-  ge("det-content").innerHTML=html;
-  ge("seg-fecha").value=new Date().toISOString().slice(0,10);
-  GymDB.getSeguimiento(s.id, function(hist){
-    if(hist.length){
-      var ul=hist[0];
-      if(ul.peso)    ge("seg-peso").value=ul.peso;
-      if(ul.musculo) ge("seg-musculo").value=ul.musculo;
-      if(ul.imc)     ge("seg-imc").value=ul.imc;
-      if(ul.grasa)   ge("seg-grasa").value=ul.grasa;
-    }
-    if(!hist.length){
-      ge("seg-historial").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin registros aún</div>";
-    } else {
-      var meses=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-      var hhtml="";
-      hist.slice(0,12).forEach(function(h){
-        var d=new Date((h.fecha||h.mes+"-01")+"T00:00:00");
-        var mn=meses[d.getMonth()]+" "+d.getFullYear();
-        hhtml+="<div class='card' style='margin-bottom:8px'>";
-        hhtml+="<div style='font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px'>"+mn+"</div>";
-        hhtml+="<div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center'>";
-        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:#4ECDC4'>"+(h.peso||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg peso</div></div>";
-        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--green)'>"+(h.musculo||"—")+"</div><div style='font-size:10px;color:var(--muted)'>kg musc.</div></div>";
-        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--lime)'>"+(h.imc||"—")+"</div><div style='font-size:10px;color:var(--muted)'>IMC</div></div>";
-        hhtml+="<div><div style='font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--orange)'>"+(h.grasa||"—")+"</div><div style='font-size:10px;color:var(--muted)'>% grasa</div></div>";
-        hhtml+="</div></div>";
-      });
-      ge("seg-historial").innerHTML=hhtml;
-    }
-  });
-  ge("btn-guardar-seg").addEventListener("click",function(){
-    var peso   =parseFloat(ge("seg-peso").value)||null;
-    var musculo=parseFloat(ge("seg-musculo").value)||null;
-    var imc    =parseFloat(ge("seg-imc").value)||null;
-    var grasa  =parseFloat(ge("seg-grasa").value)||null;
-    var fecha  =ge("seg-fecha").value||new Date().toISOString().slice(0,10);
-    if(!peso&&!musculo&&!imc&&!grasa){alert("Ingresa al menos un valor");return;}
-    GymDB.saveSeguimiento(s.id,fecha.slice(0,7),peso,musculo,imc,grasa,fecha,function(){
-      if(peso)    s.peso=peso;
-      if(musculo) s.musculo=musculo;
-      GymDB.setSocio(s);
-      mostrarToast("✓ Medidas guardadas");
-      renderTabSeguimiento(s);
-    });
-  });
-}
-
-function renderInfoGeneral(s){
-  var html="<div class='sec' style='padding-bottom:16px'>";
-  html+="<div class='f2' style='margin-bottom:12px'>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Teléfono</div><div style='font-size:14px'>"+( s.numero||"—")+"</div></div>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Emergencia</div><div style='font-size:14px'>"+(s.numero_emergencia||"—")+"</div></div>";
-  html+="</div>";
-  html+="<div style='margin-bottom:12px'><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Correo</div><div style='font-size:14px'>"+(s.correo||"—")+"</div></div>";
-  html+="<div class='f2' style='margin-bottom:12px'>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Nacimiento</div><div style='font-size:14px'>"+fFecha(s.fecha_nacimiento)+"</div></div>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Alta</div><div style='font-size:14px'>"+fFecha(s.fecha_inicio)+"</div></div>";
-  html+="</div>";
-  html+="<div class='f2' style='margin-bottom:12px'>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Sexo</div><div style='font-size:14px'>"+(s.sexo==="M"?"Masculino":s.sexo==="F"?"Femenino":"—")+"</div></div>";
-  html+="<div><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Visitas</div><div style='font-family:\"Bebas Neue\",sans-serif;font-size:22px;color:var(--lime)'>"+(s.visitas||0)+"</div></div>";
-  html+="</div>";
-  if(s.notas) html+="<div style='margin-bottom:12px'><div style='font-size:11px;color:var(--muted);margin-bottom:3px'>Notas</div><div style='font-size:13px;color:var(--muted)'>"+s.notas+"</div></div>";
-
-  // Botones de acción
-  html+="<div style='display:flex;gap:8px;margin-top:8px'>";
-  html+="<button class='btn bwa' style='flex:1;justify-content:center;padding:12px' id='btn-info-wa'>&#128241; WhatsApp</button>";
-  html+="<button class='btn "+(s.activo?"br":"bg2b")+"' style='flex:1;justify-content:center;padding:12px' id='btn-toggle-activo'>"+(s.activo?"&#10006; Desactivar":"&#10003; Activar")+"</button>";
-  html+="</div>";
-  html+="</div>";
-  ge("det-content").innerHTML=html;
-
-  ge("btn-info-wa").addEventListener("click",function(){abrirWA(s.id);});
-  ge("btn-toggle-activo").addEventListener("click",function(){
-    var label=s.activo?"desactivar":"activar";
-    if(confirm("¿Confirmas "+label+" a "+s.nombre+"?")){
-      s.activo=!s.activo;
-      GymDB.setSocio(s);
-      SOCIOS=GymDB.getSocios();
-      renderDetalle();
-    }
-  });
-}
-
-// ── MODAL: PAGO / RENOVAR ─────────────────────────────────────
-function _prepModalPago(){ poblarSelectPlanes(); }
-function abrirModalPago(s,titulo){
-  ge("pago-titulo").textContent=titulo;
-  ge("pago-plan").value=s.plan||"Mensual";
-  ge("pago-tipo").value="completo";
-  // Si tiene membresía activa, sugerir la fecha de vencimiento como inicio
-  var hoyDate=new Date(); hoyDate.setHours(0,0,0,0);
-  var fvActual=s.fecha_vencimiento?new Date(s.fecha_vencimiento+"T00:00:00"):null;
-  var defaultInicio=(fvActual&&fvActual>hoyDate)?s.fecha_vencimiento:new Date().toISOString().slice(0,10);
-  ge("pago-fecha-inicio").value=defaultInicio;
-  actualizarResumenPago();
-  ge("modal-pago").classList.add("open");
-}
-
-function actualizarResumenPago(){
-  var plan =ge("pago-plan").value;
-  var tipo =ge("pago-tipo").value;
-  var fi   =ge("pago-fecha-inicio").value;
-  var precio=PLAN_PRECIO[plan]||0;
-  var dias  =PLAN_DIAS[plan]||30;
-  var fv    =fi?addDays(fi,dias):"—";
-  var html  ="";
-
-  if(tipo==="completo"||!PLAN_ABONOS[plan]||!PLAN_ABONOS[plan].length){
-    html="<strong>Plan:</strong> "+plan+"<br><strong>Total:</strong> "+fm(precio)+"<br><strong>Vence:</strong> "+fFecha(fv)+"<br><strong>Pago:</strong> Único";
-  } else {
-    var abonos=PLAN_ABONOS[plan];
-    html="<strong>Plan:</strong> "+plan+" · "+fm(precio)+"<br><strong>Vence:</strong> "+fFecha(fv)+"<br><strong>Parcialidades:</strong><br>";
-    abonos.forEach(function(a,i){
-      var fLim=fi?addWeeks(fi,a.semanas):"—";
-      html+="· Abono "+(i+1)+": "+fm(a.monto)+" → "+fFecha(fLim)+"<br>";
-    });
-  }
-  ge("pago-resumen").innerHTML=html;
-}
-
-function guardarPago(){
-  var plan =ge("pago-plan").value;
-  var tipo =ge("pago-tipo").value;
-  var fi   =ge("pago-fecha-inicio").value;
-  var s    =socioActual; if(!s||!fi) return;
-
-  // ── Guardar historial antes de sobreescribir ──────────────────
-  if(!s.historial_membresias) s.historial_membresias=[];
-  if(s.plan&&s.fecha_vencimiento){
-    s.historial_membresias.push({
-      plan:s.plan, fecha_inicio:s.fecha_inicio||fi,
-      fecha_vencimiento:s.fecha_vencimiento,
-      precio:PLAN_PRECIO[s.plan]||0,
-      abonos:(s.abonos||[]).slice()
-    });
-  }
-
-  // ── Sumar días si la membresía sigue activa ───────────────────
-  var hoy=new Date(); hoy.setHours(0,0,0,0);
-  var fvActual=s.fecha_vencimiento?new Date(s.fecha_vencimiento+"T00:00:00"):null;
-  var baseInicio=(fvActual&&fvActual>hoy)?s.fecha_vencimiento:fi;
-
-  var dias=PLAN_DIAS[plan]||30;
-  s.plan=plan;
-  s.fecha_inicio=fi;
-  s.fecha_vencimiento=addDays(baseInicio,dias);
-
-  if(tipo==="parcial"&&PLAN_ABONOS[plan]&&PLAN_ABONOS[plan].length){
-    s.abonos=PLAN_ABONOS[plan].map(function(a,i){
-      return {num:i+1,monto:a.monto,fecha_limite:addWeeks(fi,a.semanas),pagado:false,fecha_pago:null};
-    });
-  } else {
-    s.abonos=[{num:1,monto:PLAN_PRECIO[plan],fecha_limite:fi,pagado:true,fecha_pago:fi}];
-  }
-
-  GymDB.setSocio(s);
-  SOCIOS=GymDB.getSocios();
-  // Refresh socioActual from updated list
-  socioActual=SOCIOS.find(function(x){return x.id===s.id;})||s;
-  ge("modal-pago").classList.remove("open");
-  detTab="membresia";
-  renderDetalle();
-}
-
-// ── PIN DE ADMIN ──────────────────────────────────────────────
-function pedirPin(callback){
-  pinCallback=callback; pinBuf="";
-  actualizarPinDots();
-  ge("pin-err").textContent="";
-  ge("modal-pin").classList.add("open");
-}
-function actualizarPinDots(){
-  for(var i=0;i<4;i++) ge("pd"+i).classList.toggle("filled",i<pinBuf.length);
-}
-function verificarPin(){
-  if(pinBuf===PIN_ADMIN){
-    ge("modal-pin").classList.remove("open");
-    pinBuf="";
-    if(pinCallback) pinCallback();
-    pinCallback=null;
-  } else {
-    ge("pin-err").textContent="PIN incorrecto";
-    pinBuf=""; actualizarPinDots();
-    setTimeout(function(){ge("pin-err").textContent="";},2000);
-  }
-}
-
-// ── WHATSAPP ──────────────────────────────────────────────────
-function abrirWA(id){
-  waTarget=SOCIOS.find(function(s){return s.id===id;}); if(!waTarget) return;
-  ge("wa-para").textContent="Para: "+nombreCompleto(waTarget)+" · "+waTarget.numero;
-  ge("wa-tipo").value=""; ge("wa-preview").textContent="Selecciona un tipo…";
-  ge("modal-wa").classList.add("open");
-}
-function previewWA(){
-  var tpl=MSGS_WA[ge("wa-tipo").value];
-  ge("wa-preview").textContent=tpl&&waTarget?tpl.replace(/\{nombre\}/g,waTarget.nombre).replace(/\{plan\}/g,waTarget.plan):"Selecciona un tipo…";
-}
-function enviarWA(){
-  var tpl=MSGS_WA[ge("wa-tipo").value];
-  if(!tpl||!waTarget){alert("Selecciona un tipo");return;}
-  var msg=tpl.replace(/\{nombre\}/g,waTarget.nombre).replace(/\{plan\}/g,waTarget.plan);
-  window.open("https://wa.me/52"+waTarget.numero.replace(/\D/g,"")+"?text="+encodeURIComponent(msg),"_blank");
-  ge("modal-wa").classList.remove("open");
-}
-
-// ── EVENTOS ───────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded",function(){
-  _gymdbReady.then(function(){
-    var ov=document.getElementById('ov-loading');
-    if(ov) ov.style.display='none';
-    recargarDatos();
-
-  // Modal cobrar deuda
-  ge("cobrar-cancelar").addEventListener("click",function(){ge("modal-cobrar-deuda").classList.remove("open");});
-  ge("cobrar-ok").addEventListener("click",confirmarCobro);
-  ge("cobrar-codigo").addEventListener("keydown",function(e){if(e.key==="Enter")confirmarCobro();});
-  ge("modal-cobrar-deuda").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
-  ge("btn-sync-ventas").addEventListener("click",function(){renderVentas();mostrarToast("↻ Actualizado");});
-
-  // Check-in
-  ge("btn-checkin").addEventListener("click", abrirCheckin);
-  ge("ci-input").addEventListener("input", previewCheckin);
-  ge("ci-input").addEventListener("keydown", function(e){ if(e.key==="Enter") confirmarCheckin(); });
-  ge("ci-confirmar").addEventListener("click", confirmarCheckin);
-  ge("ci-tab-codigo").addEventListener("click", function(){
-    ge("ci-panel-codigo").style.display="block";
-    ge("ci-panel-scanner").style.display="none";
-    this.style.background="var(--lime)"; this.style.color="#080808";
-    ge("ci-tab-scanner").className="btn bd"; ge("ci-tab-scanner").style.background="";
-  });
-  ge("ci-tab-scanner").addEventListener("click", function(){
-    ge("ci-panel-scanner").style.display="block";
-    ge("ci-panel-codigo").style.display="none";
-    this.style.background="var(--lime)"; this.style.color="#080808";
-    ge("ci-tab-codigo").className="btn bd"; ge("ci-tab-codigo").style.background="";
-  });
-
-  // Login
-  ge("btn-login").addEventListener("click",intentarLogin);
-  ge("login-code").addEventListener("keydown",function(e){if(e.key==="Enter")intentarLogin();});
-
-  // Nav
-  document.querySelectorAll(".nav-item[data-screen]").forEach(function(btn){
-    btn.addEventListener("click",function(){showScreen(this.dataset.screen);});
-  });
-
-  // Sort y búsqueda
-  ge("sort-sel").addEventListener("change",function(){sortActual=this.value;renderSocios();});
-  ge("soc-buscar").addEventListener("input",renderSocios);
-  ge("btn-sync-tr").addEventListener("click",function(){
-    var b=this; b.textContent="…"; b.disabled=true;
-    GymDB.init().then(function(){ recargarDatos(); renderSocios(); b.textContent="↻"; b.disabled=false; mostrarToast("↻ Actualizado"); });
-  });
-  ge("btn-nuevo-socio").addEventListener("click",function(){
-    socioActual=null;
-    ge("form-titulo").textContent="Nuevo Socio";
-    ["f-id","f-nombre","f-ap","f-am","f-tel","f-emerg","f-correo","f-notas"].forEach(function(i){ge(i).value="";});
-    ge("f-vence").value=""; ge("f-inicio").value=""; ge("f-nac").value="";
-    ge("f-plan").value=""; ge("f-sexo").value="";
-    showScreen("form");
-  });
-  ge("btn-orden-dir").addEventListener("click",function(){
-    ordenAsc=!ordenAsc;
-    this.textContent=ordenAsc?"↑":"↓";
-    renderSocios();
-  });
-
-  // Detalle tabs
-  document.querySelectorAll(".tab[data-det]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      detTab=this.dataset.det;
-      document.querySelectorAll(".tab[data-det]").forEach(function(b){b.classList.toggle("active",b.dataset.det===detTab);});
-      renderDetalle();
-    });
-  });
-
-  ge("btn-form-cancel").addEventListener("click",function(){ showScreen("socios"); });
-  ge("btn-guardar-socio").addEventListener("click", guardarSocio);
-  ge("btn-det-back").addEventListener("click",function(){ showScreen("socios"); });
-  ge("btn-sync-det").addEventListener("click",function(){
-    var b=this; b.textContent="…"; b.disabled=true;
-    GymDB.init().then(function(){
-      recargarDatos();
-      DEUDAS=GymDB.getAllDeudas();
-      // Refrescar el socio activo
-      if(socioActual) socioActual=SOCIOS.find(function(x){return x.id===socioActual.id;})||socioActual;
-      renderDetalle();
-      b.textContent="↻"; b.disabled=false;
-      mostrarToast("↻ Actualizado");
-    });
-  });
-
-  // Modal pago
-  ge("pago-plan").addEventListener("change",actualizarResumenPago);
-  ge("pago-tipo").addEventListener("change",actualizarResumenPago);
-  ge("pago-fecha-inicio").addEventListener("change",actualizarResumenPago);
-  ge("pago-guardar").addEventListener("click",guardarPago);
-
-  // WA modal
-  ge("wa-tipo").addEventListener("change",previewWA);
-  ge("wa-enviar").addEventListener("click",enviarWA);
-
-  // PIN pad
-  document.querySelectorAll(".pin-key[data-n]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      if(pinBuf.length>=4)return;
-      pinBuf+=this.dataset.n; actualizarPinDots();
-      if(pinBuf.length===4) setTimeout(verificarPin,150);
-    });
-  });
-  ge("pin-del").addEventListener("click",function(){pinBuf=pinBuf.slice(0,-1);actualizarPinDots();});
-  ge("pin-cancel").addEventListener("click",function(){pinBuf="";ge("modal-pin").classList.remove("open");});
-
-  // Cerrar modales con data-close y fondo
-  document.querySelectorAll("[data-close]").forEach(function(btn){
-    btn.addEventListener("click",function(){ge(this.dataset.close).classList.remove("open");});
-  });
-  ["modal-wa","modal-pago","modal-pin"].forEach(function(id){
-    ge(id).addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
-  });
-
-  // ── Sincronización cross-tab y polling ────────────────────
-  GymDB.onChange(function(){
-    if(ge("screen-login").classList.contains("active")) return;
-    recargarDatos();
-
-    renderPantallaActual();
-  });
-
-  }).catch(function(err){
-    var ov=document.getElementById('ov-loading');
-    var errEl=document.getElementById('ov-err');
-    if(errEl){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; }
-    console.error('[GymDB] Error al cargar:', err);
-  });
-});
-
-function renderPantallaActual(){
-  var screens=["inicio","socios","detalle","form"];
-  for(var i=0;i<screens.length;i++){
-    var el=ge("screen-"+screens[i]);
-    if(el&&el.classList.contains("active")){
-      if(screens[i]==="inicio")   renderInicio();
-      else if(screens[i]==="socios")  renderSocios();
-      else if(screens[i]==="detalle") renderDetalle();
-      break;
-    }
-  }
-}
-</script>
-
-<!-- ═══ SCREEN: VENTAS / COMISIONES ════════════════════════════ -->
-<div class="screen" id="screen-ventas">
-  <div class="hdr">
-    <div><h1>Mis Ventas</h1></div>
-    <div class="hdr-r"><button class="btn bd bsm" id="btn-sync-ventas">↻</button></div>
-  </div>
-  <div class="sec" style="padding-bottom:20px">
-    <div id="ventas-resumen" style="margin-bottom:16px"></div>
-    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Historial</div>
-    <div id="ventas-lista"></div>
-  </div>
-  <div class="nav-ph"></div>
-</div>
-
-<!-- ═══ MODAL COBRAR DEUDA ─── ya está arriba ══════════════════ -->
+<!-- MODAL: COBRAR DEUDA (código del trainer) -->
 <div class="modal-ov" id="modal-cobrar-deuda">
   <div class="modal">
     <div class="mhandle"></div>
     <h2>Cobrar producto</h2>
     <div id="cobrar-info" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
     <div class="fr"><label>Tu código de validación</label>
-      <input type="text" id="cobrar-codigo" placeholder="Tu código" maxlength="20"
-        style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+      <input type="text" id="cobrar-codigo" placeholder="Tu código" maxlength="20">
     </div>
     <div id="cobrar-error" style="font-size:12px;color:var(--red);min-height:16px;margin:8px 0"></div>
     <div class="mbtns">
-      <button id="cobrar-cancelar" class="btn bd" style="flex:1;padding:14px">Cancelar</button>
+      <button class="btn bd" style="flex:1;padding:14px" data-close="modal-cobrar-deuda">Cancelar</button>
       <button id="cobrar-ok" class="btn bl" style="flex:1;padding:14px">Confirmar cobro</button>
     </div>
   </div>
 </div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// TRAINER — solo lógica específica del entrenador
+// Las funciones compartidas viven en shared.js
+// ══════════════════════════════════════════════════════════════
+
+var TRAINER_ACTIVO = null;
+
+// Datos globales (accesibles desde shared.js)
+var SOCIOS=[], DEUDAS={}, CHECKINS=[], MEMBRESIAS=[], CLASES=[];
+var PRODUCTOS=[], MENSAJES_CAT=[], VENTAS=[];
+
+var _gymdbReady = GymDB.init();
+
+// ── DATOS ─────────────────────────────────────────────────────
+function recargarDatos() {
+  SOCIOS      = GymDB.getSocios();
+  DEUDAS      = GymDB.getAllDeudas();
+  CHECKINS    = GymDB.getTodayCheckins();
+  MEMBRESIAS  = GymDB.getMembresias();
+  CLASES      = GymDB.getClases();
+  PRODUCTOS   = GymDB.getProductos();
+  MENSAJES_CAT= GymDB.getMensajes();
+  VENTAS      = GymDB.getVentas();
+  poblarSelectPlanes();
+}
+
+// ── HOOKS de shared.js ────────────────────────────────────────
+// onGuardarPago: trainer registra el cobro de membresía a su nombre
+function onGuardarPago(s, plan, fi) {
+  if (!TRAINER_ACTIVO) return;
+  GymDB.registrarCobro({
+    tipo:"membresia", socio_id:s.id, socio_nombre:s.nombre+" "+s.apellido_paterno,
+    producto:plan, monto:PLAN_PRECIO[plan]||0,
+    vendedor_id:String(TRAINER_ACTIVO.id), vendedor_nombre:TRAINER_ACTIVO.nombre
+  });
+}
+// onRegistrarVenta: trainer registra la venta de producto a su nombre
+function onRegistrarVenta(prod, venta) {
+  if (!TRAINER_ACTIVO) return;
+  GymDB.registrarCobro({
+    tipo:"venta", socio_id:venta.socio_id, socio_nombre:venta.socio_nombre,
+    producto:prod.nombre, monto:venta.total,
+    vendedor_id:String(TRAINER_ACTIVO.id), vendedor_nombre:TRAINER_ACTIVO.nombre
+  });
+}
+// onToggleActivo: NO definido — el trainer no puede activar/desactivar socios
+// (shared.js solo muestra el botón si la función existe)
+
+// ── COBRO DE DEUDA (trainer usa su propio código) ─────────────
+function confirmarCobro() {
+  if (!_cobroPendiente) return;
+  var codigo=ge("cobrar-codigo").value.trim();
+  if (!codigo){ge("cobrar-error").textContent="Ingresa tu código";return;}
+  if (!TRAINER_ACTIVO||codigo!==TRAINER_ACTIVO.codigo){ge("cobrar-error").textContent="Código incorrecto";return;}
+  DEUDAS[_cobroPendiente.socioId]=(DEUDAS[_cobroPendiente.socioId]||[]).filter(function(d){
+    return String(d.id)!==String(_cobroPendiente.deudaId);
+  });
+  GymDB.saveAllDeudas(DEUDAS);
+  DEUDAS=GymDB.getAllDeudas();
+  GymDB.registrarCobro({tipo:"deuda",socio_id:_cobroPendiente.socioId,
+    socio_nombre:_cobroPendiente.socioNombre,producto:_cobroPendiente.producto,
+    monto:_cobroPendiente.monto,
+    vendedor_id:String(TRAINER_ACTIVO.id),vendedor_nombre:TRAINER_ACTIVO.nombre});
+  ge("modal-cobrar-deuda").classList.remove("open");
+  _cobroPendiente=null;
+  mostrarToast("✓ Cobro registrado");
+  renderDetalle();
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll(".screen,.screen-full").forEach(function(s){s.classList.remove("active");});
+  ge("screen-"+id).classList.add("active");
+  document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){
+    b.classList.toggle("active",b.dataset.screen===id);
+  });
+  if (id==="inicio")  renderInicio();
+  if (id==="socios")  renderSocios();
+  if (id==="ventas")  renderVentas();
+  if (id==="detalle") { recargarDatos(); setTimeout(renderDetalle,0); }
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function intentarLogin() {
+  var tel=ge("login-tel").value.trim(), cod=ge("login-code").value.trim();
+  if (!tel||!cod){ge("login-err").textContent="Completa los campos";return;}
+  var t=GymDB.getTrainers().find(function(x){return x.telefono===tel&&x.codigo===cod;});
+  if (!t){ge("login-err").textContent="Credenciales incorrectas";return;}
+  TRAINER_ACTIVO=t;
+  ge("screen-login").classList.remove("active");
+  ge("nav-trainer").style.display="flex";
+  ge("hdr-trainer-nombre").textContent=t.nombre;
+  var str=new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+  ge("hdr-fecha").textContent=str.charAt(0).toUpperCase()+str.slice(1);
+  showScreen("inicio");
+}
+
+// ── INICIO ────────────────────────────────────────────────────
+function renderInicio() {
+  ge("st-ci").textContent=CHECKINS.length;
+  var html="";
+  if (!CHECKINS.length) {
+    html="<div class='empty'><div class='ico'>💪</div><p>Sin check-ins hoy</p></div>";
+  } else {
+    CHECKINS.forEach(function(ci){
+      var s=SOCIOS.find(function(x){return x.id===ci.socio_id;}); if (!s) return;
+      var st=calcStatus(s);
+      var deudas=DEUDAS[s.id]||[], totalD=deudas.reduce(function(a,d){return a+d.total;},0);
+      var abonoV=(s.abonos||[]).find(function(a){
+        var lim=new Date(a.fecha_limite+"T00:00:00"),h=new Date();h.setHours(0,0,0,0);
+        return !a.pagado&&lim<h;
+      });
+      html+="<div class='ci-row' data-ver='"+s.id+"'>";
+      html+="<div class='ci-av'>"+ini(s)+"</div>";
+      html+="<div style='flex:1;min-width:0'>";
+      html+="<div style='font-size:13px;font-weight:700'>#"+s.id+" · "+s.nombre+" "+s.apellido_paterno+"</div>";
+      html+="<div style='font-size:10px;color:var(--muted);margin-top:2px'>"+ci.hora+" · "+(s.plan||"")+"</div>";
+      html+="<div style='margin-top:4px;display:flex;gap:5px;flex-wrap:wrap'>"+pillSt(st);
+      if (totalD>0) html+="<span class='pill po'>Debe: "+fm(totalD)+"</span>";
+      if (abonoV)   html+="<span class='pill pr'>Abono vencido</span>";
+      html+="</div></div><span style='color:var(--muted);font-size:18px'>›</span></div>";
+    });
+  }
+  ge("lista-ci").innerHTML=html;
+  ge("lista-ci").querySelectorAll("[data-ver]").forEach(function(el){
+    el.addEventListener("click",function(){
+      socioActual=SOCIOS.find(function(s){return s.id===this.dataset.ver;},this);
+      detTab="membresia"; showScreen("detalle");
+    });
+  });
+}
+
+// ── CHECK-IN ──────────────────────────────────────────────────
+function buscarSocioCI(val) {
+  val=val.trim(); var m=val.match(/^GM-(\d+)-/i);
+  return SOCIOS.find(function(s){return s.id===(m?m[1]:val);});
+}
+function abrirCheckin() {
+  ge("ci-input").value=""; ge("ci-err").textContent="";
+  ge("ci-preview").innerHTML="<span style='font-size:12px;color:var(--muted)'>Ingresa el código…</span>";
+  ge("modal-checkin").classList.add("open");
+  setTimeout(function(){ge("ci-input").focus();},300);
+}
+function previewCI() {
+  var s=buscarSocioCI(ge("ci-input").value);
+  if (!s){ge("ci-preview").innerHTML="<span style='font-size:12px;color:var(--muted)'>No encontrado</span>";return;}
+  var st=calcStatus(s), deudas=DEUDAS[s.id]||[], totalD=deudas.reduce(function(a,d){return a+d.total;},0);
+  var h="<div style='display:flex;align-items:center;gap:10px'>";
+  h+="<div style='width:34px;height:34px;border-radius:50%;background:"+avColor(st)+";display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#080808'>"+ini(s)+"</div>";
+  h+="<div><div style='font-weight:700;font-size:14px'>#"+s.id+" · "+s.nombre+" "+s.apellido_paterno+"</div>";
+  h+="<div style='font-size:11px;color:var(--muted);margin-top:2px'>"+(s.plan||"")+" · "+pillSt(st);
+  if (totalD>0) h+=" <span class='pill po'>Debe: "+fm(totalD)+"</span>";
+  h+="</div></div></div>";
+  ge("ci-preview").innerHTML=h;
+}
+function confirmarCI() {
+  var s=buscarSocioCI(ge("ci-input").value);
+  if (!s){ge("ci-err").textContent="Socio no encontrado";return;}
+  if (CHECKINS.find(function(c){return c.socio_id===s.id;})){ge("ci-err").textContent=s.nombre+" ya tiene check-in hoy";return;}
+  GymDB.addCheckin(s.id);
+  CHECKINS=GymDB.getTodayCheckins(); SOCIOS=GymDB.getSocios();
+  ge("modal-checkin").classList.remove("open");
+  mostrarToast("✓ Check-in: "+s.nombre);
+  renderInicio();
+}
+
+// ── VENTAS (exclusivo trainer) ────────────────────────────────
+function renderVentas() {
+  if (!TRAINER_ACTIVO) return;
+  ge("ventas-lista").innerHTML="<div style='font-size:12px;color:var(--muted)'>Cargando…</div>";
+  GymDB.getCobros(String(TRAINER_ACTIVO.id)).then(function(cobros){
+    cobros=cobros||[];
+    var hoy=new Date().toISOString().slice(0,10);
+    var mes=new Date().toISOString().slice(0,7);
+    var totalHoy=0, totalMes=0;
+    cobros.forEach(function(c){
+      if (c.fecha&&c.fecha.slice(0,10)===hoy) totalHoy+=+c.monto;
+      if (c.fecha&&c.fecha.slice(0,7)===mes)  totalMes+=+c.monto;
+    });
+    // Resumen — siempre Hoy/Mes globales
+    ge("ventas-resumen").innerHTML=
+      "<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>"+
+      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>HOY</div>"+
+      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalHoy)+"</div></div>"+
+      "<div class='card' style='text-align:center'><div style='font-size:10px;color:var(--muted);margin-bottom:4px'>ESTE MES</div>"+
+      "<div style='font-family:\"Bebas Neue\",sans-serif;font-size:28px;color:var(--lime)'>"+fm(totalMes)+"</div></div></div>";
+    // Filtro por rango de fecha
+    var desde=ge("v-desde").value, hasta=ge("v-hasta").value;
+    var filtrado=cobros.filter(function(c){
+      var f=c.fecha?c.fecha.slice(0,10):"";
+      if (desde&&f<desde) return false;
+      if (hasta&&f>hasta)  return false;
+      return true;
+    });
+    if (!filtrado.length){
+      ge("ventas-lista").innerHTML="<div style='font-size:13px;color:var(--muted);padding:8px 0'>Sin ventas en el período</div>";
+      return;
+    }
+    var html="";
+    filtrado.forEach(function(c){
+      var tipo=c.tipo==="membresia"?"💳":c.tipo==="deuda"?"📦":"🛒";
+      var fechaTxt=c.fecha?new Date(c.fecha.slice(0,10)+"T00:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"2-digit"}):"";
+      html+="<div class='card' style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>";
+      html+="<div style='font-size:20px'>"+tipo+"</div>";
+      html+="<div style='flex:1'><div style='font-size:13px;font-weight:600'>"+c.producto+"</div>";
+      html+="<div style='font-size:11px;color:var(--muted)'>"+(c.socio_nombre||"")+(fechaTxt?" · "+fechaTxt:"")+"</div></div>";
+      html+="<div style='font-family:\"Bebas Neue\",sans-serif;font-size:20px;color:var(--lime)'>"+fm(+c.monto)+"</div></div>";
+    });
+    ge("ventas-lista").innerHTML=html;
+  });
+}
+
+// ── EVENTOS — DOMContentLoaded ────────────────────────────────
+document.addEventListener("DOMContentLoaded",function(){
+
+  // Login — registrado de inmediato (no espera a Supabase)
+  ge("btn-login").addEventListener("click",intentarLogin);
+  ge("login-code").addEventListener("keydown",function(e){if(e.key==="Enter") intentarLogin();});
+
+  _gymdbReady.then(function(){
+    ge("ov-loading").style.display="none";
+    recargarDatos();
+
+    // Nav
+    document.querySelectorAll(".nav-item[data-screen]").forEach(function(b){
+      b.addEventListener("click",function(){showScreen(this.dataset.screen);});
+    });
+
+    // Eventos compartidos del detalle (shared.js)
+    initDetalleEvents();
+
+    // Sync buttons
+    function syncBtn(btnId, renderFn) {
+      var b=ge(btnId); if (!b) return;
+      b.addEventListener("click",function(){
+        var btn=this; btn.textContent="…"; btn.disabled=true;
+        GymDB.init().then(function(){ recargarDatos(); renderFn(); btn.textContent="↻"; btn.disabled=false; mostrarToast("↻ Actualizado"); });
+      });
+    }
+    syncBtn("btn-sync-inicio", renderInicio);
+    syncBtn("btn-sync-socios", renderSocios);
+    syncBtn("btn-sync-ventas", renderVentas);
+
+    // Check-in
+    ge("btn-checkin").addEventListener("click",abrirCheckin);
+    ge("ci-input").addEventListener("input",previewCI);
+    ge("ci-input").addEventListener("keydown",function(e){if(e.key==="Enter") confirmarCI();});
+    ge("ci-confirmar").addEventListener("click",confirmarCI);
+
+    // Ventas — filtro fecha
+    ge("v-desde").addEventListener("change",renderVentas);
+    ge("v-hasta").addEventListener("change",renderVentas);
+
+  }).catch(function(err){
+    var errEl=ge("ov-err"); if(errEl){errEl.style.display="block";errEl.textContent="Error: "+err.message;}
+    console.error("[GymDB]",err);
+  });
+});
+</script>
 </body>
 </html>
